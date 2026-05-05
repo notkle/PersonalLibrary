@@ -854,15 +854,25 @@ function setYTVolume(vol) {
 // ═══════════════════════════════════════════
 // AMBIENT SOUNDS MANAGEMENT
 // ═══════════════════════════════════════════
+const PRESET_SOUNDS = [
+  { id:'preset_fire',  name:'Fire',  icon:'🔥', url:'https://www.youtube.com/watch?v=mSX3OyW9Rao', videoId:'mSX3OyW9Rao', preset:true },
+  { id:'preset_night', name:'Night', icon:'🌙', url:'https://www.youtube.com/watch?v=7GoXVDH656g', videoId:'7GoXVDH656g', preset:true },
+  { id:'preset_rain',  name:'Rain',  icon:'🌧', url:'https://www.youtube.com/watch?v=mPZkdNFkNps', videoId:'mPZkdNFkNps', preset:true },
+  { id:'preset_ocean', name:'Ocean', icon:'🌊', url:'https://www.youtube.com/watch?v=bn9F19Hi1Lk', videoId:'bn9F19Hi1Lk', preset:true },
+];
+
 async function loadAmbientSounds() {
   const rec = await dbGet('settings','ambientSounds');
-  ambientSounds = rec ? rec.value : [];
+  const userSounds = rec ? rec.value : [];
+  // Presets always first, then user-added sounds
+  ambientSounds = [...PRESET_SOUNDS, ...userSounds];
   renderAmbientList();
   renderAmbientPopup();
 }
 
 async function saveAmbientSounds() {
-  await dbPut('settings', { key:'ambientSounds', value:ambientSounds });
+  // Only persist user-added sounds, not presets
+  await dbPut('settings', { key:'ambientSounds', value:ambientSounds.filter(s=>!s.preset) });
 }
 
 function renderAmbientList() {
@@ -876,9 +886,9 @@ function renderAmbientList() {
     const row = document.createElement('div');
     row.className = 'ambient-item';
     row.innerHTML = `
-      <span class="ambient-item-name">${s.name}</span>
-      <span class="ambient-item-url">${s.url}</span>
-      <button class="ambient-item-del" onclick="removeAmbientSound('${s.id}')" title="Remove">✕</button>
+      <span class="ambient-item-name">${s.icon||'♪'} ${s.name}</span>
+      <span class="ambient-item-url">${s.preset ? '<em style="color:rgba(200,144,42,0.4);font-style:italic;font-size:0.78rem">built-in</em>' : s.url}</span>
+      ${s.preset ? '' : `<button class="ambient-item-del" onclick="removeAmbientSound('${s.id}')" title="Remove">✕</button>`}
     `;
     el.appendChild(row);
   });
@@ -907,7 +917,7 @@ function renderAmbientPopup() {
     const opt = document.createElement('div');
     opt.className = 'ambient-sound-opt' + (currentAmbientId===s.id?' active':'');
     opt.dataset.id = s.id;
-    opt.innerHTML = `<span class="aso-icon">♪</span><span class="aso-name">${s.name}</span>`;
+    opt.innerHTML = `<span class="aso-icon">${s.icon||'♪'}</span><span class="aso-name">${s.name}</span>`;
     opt.onclick = () => selectAmbient(s.id);
     el.appendChild(opt);
   });
@@ -932,6 +942,7 @@ function addAmbientSound() {
 }
 
 async function removeAmbientSound(id) {
+  if (ambientSounds.find(s=>s.id===id)?.preset) return; // can't remove presets
   if (currentAmbientId === id) selectAmbient(null);
   ambientSounds = ambientSounds.filter(s=>s.id!==id);
   await saveAmbientSounds();
