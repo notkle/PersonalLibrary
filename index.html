@@ -627,7 +627,7 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
     <button class="btn btn-ghost" id="settings-btn" onclick="showSettingsView()">⚙ Settings</button>
     <button class="btn btn-ghost" id="back-btn" style="display:none" onclick="goToLibrary()">← Library</button>
     <button class="btn btn-danger" id="remove-book-btn" style="display:none" onclick="confirmRemoveCurrentBook()">✕ Remove Book</button>
-    <button class="btn btn-primary" id="add-btn" onclick="var fi=document.getElementById('file-input');fi.value='';fi.click();">+ Add Book</button>
+    <button class="btn btn-primary" id="add-btn" onclick="var fi=document.getElementById('file-input');if(fi){fi.value='';fi.click();}">+ Add Book</button>
   </div>
 </header>
 <input type="file" id="file-input" accept=".epub,.txt,.html,.htm" multiple style="display:none">
@@ -2095,16 +2095,12 @@ async function sendAiRequest() {
 
     const data = await response.json();
     const text = data.text || 'No response received.';
-    // Render with basic markdown-like formatting
-    resp.innerHTML = text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/
-
-/g, '</p><p>')
-      .replace(/
-/g, '<br>');
-    resp.innerHTML = '<p>' + resp.innerHTML + '</p>';
+    const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const formatted = escaped
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g,'<em>$1</em>')
+      .split('\n\n').map(p=>'<p>'+p.replace(/\n/g,'<br>')+'</p>').join('');
+    resp.innerHTML = formatted || '<p>'+escaped+'</p>';
   } catch(e) {
     resp.innerHTML = `<span style="color:#ff8888">Error: ${e.message}</span>`;
   }
@@ -2153,77 +2149,104 @@ function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.to
 // ═══════════════════════════════════════════
 // EVENT LISTENERS
 // ═══════════════════════════════════════════
-document.getElementById('file-input').addEventListener('change',e=>{ handleFiles(e.target.files); e.target.value=''; });
-const uz=document.getElementById('upload-zone');
-uz.addEventListener('click', e => {
-  e.stopPropagation();
-  const fi = document.getElementById('file-input');
-  fi.value = '';
-  fi.click();
-});
-uz.addEventListener('dragenter', e=>{e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over');});
-uz.addEventListener('dragover',  e=>{e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over');});
-uz.addEventListener('dragleave', e=>{e.stopPropagation(); uz.classList.remove('drag-over');});
-uz.addEventListener('drop', e=>{
-  e.preventDefault(); e.stopPropagation();
-  uz.classList.remove('drag-over');
-  if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
-});
-
-// Also allow dropping anywhere on the library view
-const lv = document.getElementById('library-view');
-lv.addEventListener('dragenter', e=>{e.preventDefault(); uz.classList.add('drag-over');});
-lv.addEventListener('dragover',  e=>{e.preventDefault(); uz.classList.add('drag-over');});
-lv.addEventListener('dragleave', e=>{
-  if(!lv.contains(e.relatedTarget)) uz.classList.remove('drag-over');
-});
-lv.addEventListener('drop', e=>{
-  e.preventDefault();
-  uz.classList.remove('drag-over');
-  if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
-});
-
-// Prevent default browser drag behavior on window
-window.addEventListener('dragover',  e=>e.preventDefault());
-window.addEventListener('drop',      e=>e.preventDefault());
-document.getElementById('chapter-select').addEventListener('change',e=>loadChapter(parseInt(e.target.value),0));
-document.getElementById('reader-scroll').addEventListener('scroll',syncScrollbar);
-window.addEventListener('resize',()=>{ if(book) updateScrollbar(); });
-document.getElementById('search-input').addEventListener('input',e=>{
-  const q=e.target.value;
-  document.getElementById('search-x').classList.toggle('show',q.length>0);
-  clearTimeout(searchTimer); searchTimer=setTimeout(()=>doSearch(q),180);
-});
-document.getElementById('search-x').addEventListener('click',()=>{
-  document.getElementById('search-input').value='';
-  document.getElementById('search-x').classList.remove('show');
-  doSearch('');
-});
-document.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA') return;
-  if(!book) return;
-  if(e.code==='Space'){e.preventDefault();togglePlay();}
-  if(e.code==='ArrowRight') nextSentence();
-  if(e.code==='ArrowLeft')  prevSentence();
-});
-window.speechSynthesis.onvoiceschanged=loadVoices;
-
-// ═══════════════════════════════════════════
-// INIT
+// INIT — all event listeners inside DOMContentLoaded
 // ═══════════════════════════════════════════
 async function init(){
+  // Database + data
   await openDB();
-  books=await dbAll('books');
-  books.sort((a,b)=>b.addedAt-a.addedAt);
+  books = await dbAll('books');
+  books.sort((a,b) => b.addedAt - a.addedAt);
   renderLibrary();
   await loadAmbientSounds();
   restoreVolPrefs();
   loadYTApi();
-  setTimeout(loadVoices,300);
+  setTimeout(loadVoices, 300);
   restoreAppearancePrefs();
   syncVolSliders();
   restoreBrightness();
+
+  // ── File upload ──────────────────────────────────────────────────────
+  const fileInput = document.getElementById('file-input');
+  if(fileInput){
+    fileInput.addEventListener('change', e => {
+      if(e.target.files.length) handleFiles(e.target.files);
+      e.target.value = '';
+    });
+  }
+
+  const uz = document.getElementById('upload-zone');
+  if(uz){
+    uz.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if(fileInput){ fileInput.value=''; fileInput.click(); }
+    });
+    uz.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over'); });
+    uz.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over'); });
+    uz.addEventListener('dragleave', e => { e.stopPropagation(); uz.classList.remove('drag-over'); });
+    uz.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      uz.classList.remove('drag-over');
+      if(e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    });
+  }
+
+  // Also allow dropping anywhere on library view
+  const lv = document.getElementById('library-view');
+  if(lv){
+    lv.addEventListener('dragenter', e => { e.preventDefault(); if(uz) uz.classList.add('drag-over'); });
+    lv.addEventListener('dragover',  e => { e.preventDefault(); if(uz) uz.classList.add('drag-over'); });
+    lv.addEventListener('dragleave', e => { if(!lv.contains(e.relatedTarget) && uz) uz.classList.remove('drag-over'); });
+    lv.addEventListener('drop', e => {
+      e.preventDefault();
+      if(uz) uz.classList.remove('drag-over');
+      if(e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    });
+  }
+
+  // Prevent browser opening file if dropped outside zone
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop',     e => e.preventDefault());
+
+  // ── Reader controls ──────────────────────────────────────────────────
+  const chapterSel = document.getElementById('chapter-select');
+  if(chapterSel) chapterSel.addEventListener('change', e => loadChapter(parseInt(e.target.value), 0));
+
+  const readerScroll = document.getElementById('reader-scroll');
+  if(readerScroll) readerScroll.addEventListener('scroll', syncScrollbar);
+
+  const searchInput = document.getElementById('search-input');
+  if(searchInput){
+    searchInput.addEventListener('input', e => {
+      const q = e.target.value;
+      document.getElementById('search-x').classList.toggle('show', q.length > 0);
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => doSearch(q), 180);
+    });
+  }
+
+  const searchX = document.getElementById('search-x');
+  if(searchX){
+    searchX.addEventListener('click', () => {
+      document.getElementById('search-input').value = '';
+      searchX.classList.remove('show');
+      doSearch('');
+    });
+  }
+
+  window.addEventListener('resize', () => { if(book) updateScrollbar(); });
+
+  document.addEventListener('keydown', e => {
+    if(e.target.tagName==='INPUT' || e.target.tagName==='SELECT' || e.target.tagName==='TEXTAREA') return;
+    if(!book) return;
+    if(e.code==='Space')      { e.preventDefault(); togglePlay(); }
+    if(e.code==='ArrowRight') nextSentence();
+    if(e.code==='ArrowLeft')  prevSentence();
+  });
+
+  window.speechSynthesis.onvoiceschanged = loadVoices;
 }
+
 init();
 </script>
 </body>
