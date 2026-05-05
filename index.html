@@ -644,6 +644,99 @@ body.in-library .dock { transform: translateX(-50%) translateY(100%) !important;
   .dock-voice-wrap { display: none; }
   .search-panel.open { width: 260px; }
 }
+
+/* ── AMBIENT PANEL ── */
+.ambient-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(200,144,42,0.07);
+  border: 1px solid rgba(200,144,42,0.22);
+  color: var(--amber-light);
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.84rem;
+  padding: 6px 11px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.ambient-btn:hover, .ambient-btn.active { background: rgba(200,144,42,0.15); border-color: var(--amber); }
+.ambient-btn .playing-dot {
+  width: 6px; height: 6px;
+  background: #6ddb82;
+  border-radius: 50%;
+  display: none;
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+.ambient-btn.playing .playing-dot { display: block; }
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.7); }
+}
+
+.ambient-panel {
+  position: fixed;
+  bottom: 76px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  width: min(420px, 94vw);
+  background: rgba(14, 9, 2, 0.97);
+  border: 1px solid rgba(200,144,42,0.28);
+  border-radius: 10px;
+  padding: 18px 20px;
+  box-shadow: 0 -4px 32px rgba(0,0,0,0.7);
+  backdrop-filter: blur(14px);
+  z-index: 500;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.ambient-panel.show {
+  opacity: 1; pointer-events: all;
+  transform: translateX(-50%) translateY(0);
+}
+.ambient-panel-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.9rem;
+  color: var(--amber-light);
+  margin-bottom: 14px;
+  letter-spacing: 0.04em;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.ambient-close { background: none; border: none; color: rgba(200,144,42,0.4); cursor: pointer; font-size: 1rem; }
+.ambient-close:hover { color: var(--amber-light); }
+.ambient-sounds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+.sound-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 10px 6px;
+  background: rgba(200,144,42,0.06);
+  border: 1px solid rgba(200,144,42,0.15);
+  border-radius: 6px; cursor: pointer;
+  transition: all 0.15s;
+  color: var(--paper-dark);
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.78rem; text-align: center;
+}
+.sound-btn:hover { background: rgba(200,144,42,0.12); border-color: rgba(200,144,42,0.3); color: var(--paper); }
+.sound-btn.active { background: rgba(200,144,42,0.2); border-color: var(--amber); color: var(--amber-light); }
+.sound-btn .sound-icon { font-size: 1.4rem; line-height: 1; }
+.volume-section { display: flex; flex-direction: column; gap: 12px; }
+.vol-row { display: flex; align-items: center; gap: 10px; }
+.vol-label { font-size: 0.75rem; color: var(--paper-dark); min-width: 72px; text-transform: uppercase; letter-spacing: 0.07em; }
+.vol-slider {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 3px; background: rgba(200,144,42,0.15);
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--amber);
+  border: 2px solid var(--amber-dark); cursor: pointer;
+}
+.vol-slider::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--amber); border: 2px solid var(--amber-dark); cursor: pointer;
+}
+.vol-value { font-size: 0.75rem; color: var(--amber-light); min-width: 30px; text-align: right; }
+
 </style>
 </head>
 <body class="in-library">
@@ -800,6 +893,60 @@ body.in-library .dock { transform: translateX(-50%) translateY(100%) !important;
     </svg>
     Search
   </button>
+
+  <button class="ambient-btn" id="ambient-btn" onclick="toggleAmbientPanel()">
+    <span class="playing-dot"></span>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4">
+      <path d="M2 5h3l2-3 2 8 2-4 1 2h2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Ambient
+  </button>
+</div>
+
+<!-- Ambient Panel -->
+<div class="ambient-panel" id="ambient-panel">
+  <div class="ambient-panel-title">
+    Ambient Sound
+    <button class="ambient-close" onclick="toggleAmbientPanel()">✕</button>
+  </div>
+  <div class="ambient-sounds">
+    <button class="sound-btn" data-sound="fireplace" onclick="selectSound('fireplace')">
+      <span class="sound-icon">🔥</span>Fireplace
+    </button>
+    <button class="sound-btn" data-sound="rain" onclick="selectSound('rain')">
+      <span class="sound-icon">🌧</span>Rain
+    </button>
+    <button class="sound-btn" data-sound="ocean" onclick="selectSound('ocean')">
+      <span class="sound-icon">🌊</span>Ocean
+    </button>
+    <button class="sound-btn" data-sound="forest" onclick="selectSound('forest')">
+      <span class="sound-icon">🌲</span>Forest
+    </button>
+    <button class="sound-btn" data-sound="snow" onclick="selectSound('snow')">
+      <span class="sound-icon">❄️</span>Snow Wind
+    </button>
+    <button class="sound-btn" data-sound="cafe" onclick="selectSound('cafe')">
+      <span class="sound-icon">☕</span>Café
+    </button>
+    <button class="sound-btn" data-sound="thunder" onclick="selectSound('thunder')">
+      <span class="sound-icon">⛈</span>Thunder
+    </button>
+    <button class="sound-btn active" data-sound="none" onclick="selectSound('none')">
+      <span class="sound-icon">🔇</span>Off
+    </button>
+  </div>
+  <div class="volume-section">
+    <div class="vol-row">
+      <span class="vol-label">🔊 Voice</span>
+      <input type="range" class="vol-slider" id="voice-vol" min="0" max="100" value="100" oninput="setVoiceVolume(this.value)">
+      <span class="vol-value" id="voice-vol-val">100%</span>
+    </div>
+    <div class="vol-row">
+      <span class="vol-label">🎵 Ambient</span>
+      <input type="range" class="vol-slider" id="ambient-vol" min="0" max="100" value="35" oninput="setAmbientVolume(this.value)">
+      <span class="vol-value" id="ambient-vol-val">35%</span>
+    </div>
+  </div>
 </div>
 
 <!-- Voice guide -->
@@ -1212,6 +1359,7 @@ function speak(text) {
   if (!text) return;
   utt = new SpeechSynthesisUtterance(text);
   utt.rate = rate;
+  utt.volume = voiceVol;
   if (selVoice) utt.voice = selVoice;
   utt.onend = () => { if (playing) doAdvance(); };
   utt.onerror = e => { if (e.error !== 'interrupted' && playing) doAdvance(); };
@@ -1447,6 +1595,179 @@ document.addEventListener('mousemove', e => {
 // ═══════════════════════════════════════════════════
 // VOICE GUIDE
 // ═══════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════
+// AMBIENT SOUND
+// ═══════════════════════════════════════════════════
+const SOUNDS = {
+  fireplace: 'https://www.soundjay.com/nature/sounds/fire-burning-1.mp3',
+  rain:      'https://www.soundjay.com/nature/sounds/rain-03.mp3',
+  ocean:     'https://www.soundjay.com/nature/sounds/ocean-wave-1.mp3',
+  forest:    'https://www.soundjay.com/nature/sounds/birds-singing-1.mp3',
+  snow:      'https://www.soundjay.com/nature/sounds/wind-1.mp3',
+  cafe:      'https://www.soundjay.com/people/sounds/crowd-talking-1.mp3',
+  thunder:   'https://www.soundjay.com/nature/sounds/thunder-3.mp3',
+};
+
+// Fallback: use Web Audio API to generate simple noise if fetch fails
+let ambientAudio = null;
+let ambientCtx   = null;
+let noiseNode    = null;
+let noiseGain    = null;
+let currentSound = 'none';
+let ambientVol   = 0.35;
+let voiceVol     = 1.0;
+
+// Generate brown noise via Web Audio (offline fallback)
+function createBrownNoise(ctx) {
+  const bufSize = ctx.sampleRate * 4;
+  const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < bufSize; i++) {
+    const w = Math.random() * 2 - 1;
+    data[i] = (last + 0.02 * w) / 1.02;
+    last = data[i];
+    data[i] *= 3.5;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+  return src;
+}
+
+// Modulation shapes for different "sounds" using noise + filters
+const NOISE_CONFIGS = {
+  fireplace: { type: 'lowpass',  freq: 400,  q: 0.8, gain: 0.6 },
+  rain:      { type: 'highpass', freq: 1200, q: 0.5, gain: 0.5 },
+  ocean:     { type: 'lowpass',  freq: 300,  q: 1.2, gain: 0.7 },
+  forest:    { type: 'bandpass', freq: 800,  q: 0.6, gain: 0.45 },
+  snow:      { type: 'highpass', freq: 2000, q: 0.3, gain: 0.35 },
+  cafe:      { type: 'bandpass', freq: 1000, q: 0.4, gain: 0.5 },
+  thunder:   { type: 'lowpass',  freq: 150,  q: 2.0, gain: 0.8 },
+};
+
+function stopAmbient() {
+  if (ambientAudio) {
+    ambientAudio.pause();
+    ambientAudio.src = '';
+    ambientAudio = null;
+  }
+  if (noiseNode) {
+    try { noiseNode.stop(); } catch(e) {}
+    noiseNode = null;
+  }
+  if (ambientCtx) {
+    ambientCtx.close();
+    ambientCtx = null;
+    noiseGain = null;
+  }
+}
+
+function startNoiseAmbient(soundKey) {
+  stopAmbient();
+  const cfg = NOISE_CONFIGS[soundKey];
+  if (!cfg) return;
+
+  ambientCtx = new (window.AudioContext || window.webkitAudioContext)();
+  noiseNode  = createBrownNoise(ambientCtx);
+  const filter = ambientCtx.createBiquadFilter();
+  filter.type            = cfg.type;
+  filter.frequency.value = cfg.freq;
+  filter.Q.value         = cfg.q;
+  noiseGain = ambientCtx.createGain();
+  noiseGain.gain.value = ambientVol * cfg.gain;
+  noiseNode.connect(filter);
+  filter.connect(noiseGain);
+  noiseGain.connect(ambientCtx.destination);
+  noiseNode.start();
+}
+
+function selectSound(key) {
+  currentSound = key;
+  // Update button states
+  document.querySelectorAll('.sound-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.sound === key);
+  });
+
+  const ambBtn = document.getElementById('ambient-btn');
+
+  if (key === 'none') {
+    stopAmbient();
+    ambBtn.classList.remove('playing');
+    localStorage.setItem('pl_ambient', 'none');
+    return;
+  }
+
+  ambBtn.classList.add('playing');
+  localStorage.setItem('pl_ambient', key);
+
+  // Try real audio first, fall back to generated noise
+  stopAmbient();
+  const url = SOUNDS[key];
+  if (url) {
+    ambientAudio = new Audio();
+    ambientAudio.crossOrigin = 'anonymous';
+    ambientAudio.loop   = true;
+    ambientAudio.volume = ambientVol;
+    ambientAudio.src    = url;
+    ambientAudio.play().catch(() => {
+      // Audio fetch failed — use generated noise
+      ambientAudio = null;
+      startNoiseAmbient(key);
+    });
+  } else {
+    startNoiseAmbient(key);
+  }
+}
+
+function setAmbientVolume(val) {
+  ambientVol = val / 100;
+  document.getElementById('ambient-vol-val').textContent = val + '%';
+  localStorage.setItem('pl_ambient_vol', val);
+  if (ambientAudio) ambientAudio.volume = ambientVol;
+  if (noiseGain)    noiseGain.gain.value = ambientVol * (NOISE_CONFIGS[currentSound]?.gain || 0.5);
+}
+
+function setVoiceVolume(val) {
+  voiceVol = val / 100;
+  document.getElementById('voice-vol-val').textContent = val + '%';
+  localStorage.setItem('pl_voice_vol', val);
+  if (utt) utt.volume = voiceVol;
+}
+
+function toggleAmbientPanel() {
+  const p   = document.getElementById('ambient-panel');
+  const btn = document.getElementById('ambient-btn');
+  const showing = p.classList.toggle('show');
+  btn.classList.toggle('active', showing);
+}
+
+function restoreAmbientPrefs() {
+  const savedSound  = localStorage.getItem('pl_ambient')      || 'none';
+  const savedAmbVol = localStorage.getItem('pl_ambient_vol')  || '35';
+  const savedVoiVol = localStorage.getItem('pl_voice_vol')    || '100';
+
+  document.getElementById('ambient-vol').value    = savedAmbVol;
+  document.getElementById('ambient-vol-val').textContent = savedAmbVol + '%';
+  document.getElementById('voice-vol').value      = savedVoiVol;
+  document.getElementById('voice-vol-val').textContent   = savedVoiVol + '%';
+  ambientVol = savedAmbVol / 100;
+  voiceVol   = savedVoiVol / 100;
+
+  if (savedSound && savedSound !== 'none') selectSound(savedSound);
+}
+
+// Close ambient panel when clicking outside
+document.addEventListener('click', e => {
+  const panel = document.getElementById('ambient-panel');
+  const btn   = document.getElementById('ambient-btn');
+  if (panel.classList.contains('show') && !panel.contains(e.target) && !btn.contains(e.target)) {
+    panel.classList.remove('show');
+    btn.classList.remove('active');
+  }
+});
+
 function toggleVoiceGuide() {
   document.getElementById('voice-guide').classList.toggle('show');
 }
@@ -1534,6 +1855,7 @@ async function init() {
   books.sort((a,b)=>b.addedAt-a.addedAt);
   renderLibrary();
   setTimeout(loadVoices, 300);
+  restoreAmbientPrefs();
 }
 
 init();
