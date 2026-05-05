@@ -627,9 +627,9 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
     <button class="btn btn-ghost" id="back-btn" style="display:none" onclick="goToLibrary()">← Library</button>
     <button class="btn btn-danger" id="remove-book-btn" style="display:none" onclick="confirmRemoveCurrentBook()">✕ Remove Book</button>
     <button class="btn btn-primary" id="add-btn" onclick="document.getElementById('file-input').click()">+ Add Book</button>
-    <input type="file" id="file-input" accept=".epub,.txt,.html,.htm" multiple>
   </div>
 </header>
+<input type="file" id="file-input" accept=".epub,.txt,.html,.htm" multiple style="display:none">
 
 <!-- LIBRARY -->
 <div id="library-view" class="view active">
@@ -2154,10 +2154,35 @@ function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.to
 // ═══════════════════════════════════════════
 document.getElementById('file-input').addEventListener('change',e=>{ handleFiles(e.target.files); e.target.value=''; });
 const uz=document.getElementById('upload-zone');
-uz.addEventListener('click',()=>document.getElementById('file-input').click());
-uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('drag-over');});
-uz.addEventListener('dragleave',()=>uz.classList.remove('drag-over'));
-uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('drag-over');handleFiles(e.dataTransfer.files);});
+uz.addEventListener('click', e => {
+  e.stopPropagation();
+  document.getElementById('file-input').click();
+});
+uz.addEventListener('dragenter', e=>{e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over');});
+uz.addEventListener('dragover',  e=>{e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over');});
+uz.addEventListener('dragleave', e=>{e.stopPropagation(); uz.classList.remove('drag-over');});
+uz.addEventListener('drop', e=>{
+  e.preventDefault(); e.stopPropagation();
+  uz.classList.remove('drag-over');
+  if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
+
+// Also allow dropping anywhere on the library view
+const lv = document.getElementById('library-view');
+lv.addEventListener('dragenter', e=>{e.preventDefault(); uz.classList.add('drag-over');});
+lv.addEventListener('dragover',  e=>{e.preventDefault(); uz.classList.add('drag-over');});
+lv.addEventListener('dragleave', e=>{
+  if(!lv.contains(e.relatedTarget)) uz.classList.remove('drag-over');
+});
+lv.addEventListener('drop', e=>{
+  e.preventDefault();
+  uz.classList.remove('drag-over');
+  if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
+
+// Prevent default browser drag behavior on window
+window.addEventListener('dragover',  e=>e.preventDefault());
+window.addEventListener('drop',      e=>e.preventDefault());
 document.getElementById('chapter-select').addEventListener('change',e=>loadChapter(parseInt(e.target.value),0));
 document.getElementById('reader-scroll').addEventListener('scroll',syncScrollbar);
 window.addEventListener('resize',()=>{ if(book) updateScrollbar(); });
