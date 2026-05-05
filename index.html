@@ -110,12 +110,17 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 /* READER BODY */
 .reader-body { flex:1; display:flex; overflow:hidden; position:relative; }
 .page-wrap { flex:1; position:relative; overflow:hidden; display:flex; align-items:stretch; }
-.page-arrow { position:absolute; top:0; bottom:0; width:80px; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s; cursor:pointer; z-index:50; pointer-events:none; }
-.page-arrow.left { left:0; background:linear-gradient(90deg,rgba(10,6,0,0.6),transparent); }
-.page-arrow.right { right:0; background:linear-gradient(270deg,rgba(10,6,0,0.6),transparent); }
-.page-wrap:hover .page-arrow { opacity:1; pointer-events:all; }
-.page-arrow svg { color:rgba(200,144,42,0.7); transition:color 0.15s,transform 0.15s; }
-.page-arrow:hover svg { color:var(--amber-light); transform:scale(1.15); }
+.page-arrow { position:absolute; top:0; bottom:0; width:140px; display:flex; align-items:center; justify-content:center; opacity:1; transition:opacity 0.2s; cursor:pointer; z-index:50; pointer-events:all; }
+.page-arrow.left { left:0; background:linear-gradient(90deg,rgba(8,4,0,0.82) 0%,rgba(8,4,0,0.45) 55%,transparent 100%); }
+.page-arrow.right { right:0; background:linear-gradient(270deg,rgba(8,4,0,0.82) 0%,rgba(8,4,0,0.45) 55%,transparent 100%); }
+.page-arrow svg { color:rgba(200,144,42,0.0); transition:color 0.2s,transform 0.15s; }
+.page-arrow:hover svg { color:rgba(200,144,42,0.85); transform:scale(1.15); }
+/* Top and bottom vignette bars to fully box the page */
+.page-wrap::before, .page-wrap::after {
+  content:''; position:absolute; left:0; right:0; height:80px; z-index:45; pointer-events:none;
+}
+.page-wrap::before { top:0; background:linear-gradient(180deg,rgba(8,4,0,0.75) 0%,transparent 100%); }
+.page-wrap::after  { bottom:0; background:linear-gradient(0deg,rgba(8,4,0,0.75) 0%,transparent 100%); }
 .reader-scroll { flex:1; overflow-y:scroll; padding:52px 100px 100px; scroll-behavior:smooth; position:relative; }
 .reader-scroll::-webkit-scrollbar { display:none; }
 .reader-scroll { -ms-overflow-style:none; scrollbar-width:none; }
@@ -402,7 +407,7 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
 <body class="in-library">
 
 <header>
-  <div class="logo">
+  <div class="logo" onclick="goToLibrary()" style="cursor:pointer" title="Go to library">
     PersonalLibrary
     <svg width="28" height="22" viewBox="0 0 28 22" fill="none" xmlns="http://www.w3.org/2000/svg">
       <!-- left page -->
@@ -844,7 +849,13 @@ function pauseYouTube() {
 }
 
 function resumeYouTube() {
-  if (ytPlayer && currentAmbientId) { try { ytPlayer.playVideo(); } catch(e) {} }
+  if (!currentAmbientId) return;
+  if (ytPlayer) {
+    try { ytPlayer.playVideo(); } catch(e) {}
+  } else {
+    const sound = ambientSounds.find(s=>s.id===currentAmbientId);
+    if (sound) playYouTube(sound.videoId);
+  }
 }
 
 function setYTVolume(vol) {
@@ -954,10 +965,12 @@ function selectAmbient(id) {
   currentAmbientId = id;
   renderAmbientPopup();
   localStorage.setItem('pl_ambient_id', id || '');
-
   if (!id) { stopYouTube(); return; }
-  const sound = ambientSounds.find(s=>s.id===id);
-  if (sound) playYouTube(sound.videoId);
+  // Only start playing if TTS is actively playing
+  if (playing) {
+    const sound = ambientSounds.find(s=>s.id===id);
+    if (sound) playYouTube(sound.videoId);
+  }
 }
 
 function toggleAmbientPopup() {
@@ -993,7 +1006,10 @@ function restoreVolPrefs() {
   ambientVol = av/100;
   // Restore last ambient selection
   const lastId = localStorage.getItem('pl_ambient_id');
-  if (lastId) setTimeout(()=>selectAmbient(lastId), 1000);
+  if (lastId) {
+    currentAmbientId = lastId;
+    setTimeout(()=>{ renderAmbientPopup(); renderRspAmbientList(); }, 500);
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1670,7 +1686,8 @@ function renderRspAmbientList() {
   ambientSounds.forEach(s => {
     const row = document.createElement('div');
     row.className = 'rsp-ambient-opt' + (currentAmbientId === s.id ? ' active' : '');
-    row.innerHTML = `<span style="font-size:1rem">♪</span><span class="rsp-ambient-name">${s.name}</span><button onclick="event.stopPropagation();removeAmbientSound('${s.id}')" style="background:none;border:none;color:rgba(200,80,80,0.5);cursor:pointer;font-size:0.85rem;padding:0 2px" title="Remove">✕</button>`;
+    const delBtn = s.preset ? '' : `<button onclick="event.stopPropagation();removeAmbientSound('${s.id}');renderRspAmbientList();" style="background:none;border:none;color:rgba(200,80,80,0.5);cursor:pointer;font-size:0.85rem;padding:0 2px" title="Remove">✕</button>`;
+    row.innerHTML = `<span style="font-size:1rem">${s.icon||'♪'}</span><span class="rsp-ambient-name">${s.name}</span>${delBtn}`;
     row.addEventListener('click', () => { selectAmbient(s.id); renderRspAmbientList(); });
     el.appendChild(row);
   });
