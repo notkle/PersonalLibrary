@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PersonalLibrary</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1208;
+    --paper: #f5f0e8;
+    --paper-dark: #ede6d3;
+    --paper-darker: #d9cdb3;
+    --amber: #c8902a;
+    --amber-light: #e8b84b;
+    --amber-dark: #8a5f0d;
+    --shelf: #6b4423;
+    --shelf-dark: #4a2d12;
+    --spine-shadow: rgba(0,0,0,0.35);
+    --red-accent: #8b2020;
+    --green-accent: #1a4a2a;
+    --blue-accent: #1a2a4a;
+    --teal-accent: #1a3a3a;
+    --radius: 3px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Crimson Pro', Georgia, serif;
+    background: var(--ink);
+    color: var(--paper);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── GRAIN OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999; opacity: 0.4;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    background: linear-gradient(180deg, #0d0900 0%, #1a1208 100%);
+    border-bottom: 2px solid var(--amber-dark);
+    padding: 18px 40px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: var(--amber-light);
+    letter-spacing: 0.04em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo svg { opacity: 0.85; }
+
+  .header-actions { display: flex; gap: 12px; align-items: center; }
+
+  .btn {
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 8px 18px;
+    border-radius: var(--radius);
+    border: 1.5px solid;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+  }
+  .btn-primary {
+    background: var(--amber);
+    border-color: var(--amber-dark);
+    color: var(--ink);
+  }
+  .btn-primary:hover { background: var(--amber-light); }
+  .btn-ghost {
+    background: transparent;
+    border-color: rgba(200,144,42,0.35);
+    color: var(--amber-light);
+  }
+  .btn-ghost:hover { border-color: var(--amber); background: rgba(200,144,42,0.1); }
+
+  /* ─── MAIN VIEWS ─── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ─── LIBRARY VIEW ─── */
+  #library-view {
+    padding: 48px 40px;
+    min-height: calc(100vh - 70px);
+  }
+
+  .library-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-bottom: 40px;
+    border-bottom: 1px solid rgba(200,144,42,0.2);
+    padding-bottom: 20px;
+  }
+
+  .library-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    color: var(--paper);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+  .library-title span {
+    font-style: italic;
+    color: var(--amber-light);
+  }
+  .library-count {
+    font-size: 0.9rem;
+    color: var(--paper-darker);
+    font-style: italic;
+    margin-top: 4px;
+  }
+
+  /* ─── BOOKSHELF ─── */
+  .shelf-container {
+    background: linear-gradient(180deg, #2a1a0a 0%, #3d2010 40%, #4a2d12 100%);
+    border-radius: 6px;
+    padding: 24px 28px 0;
+    box-shadow: inset 0 -6px 20px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.5);
+    margin-bottom: 40px;
+    border: 1px solid rgba(107,68,35,0.6);
+    position: relative;
+  }
+
+  .books-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+    min-height: 180px;
+    padding-bottom: 0;
+  }
+
+  /* The shelf plank */
+  .shelf-plank {
+    height: 22px;
+    background: linear-gradient(180deg, var(--shelf) 0%, var(--shelf-dark) 60%, #2a1000 100%);
+    margin: 0 -28px;
+    border-top: 2px solid #8b6040;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    position: relative;
+  }
+  .shelf-plank::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(255,220,150,0.15), transparent);
+  }
+
+  /* ─── BOOK SPINE ─── */
+  .book-spine {
+    width: 44px;
+    height: 160px;
+    border-radius: 2px 0 0 2px;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s;
+    flex-shrink: 0;
+    transform-origin: bottom center;
+    box-shadow: 3px 0 8px var(--spine-shadow), inset -3px 0 6px rgba(0,0,0,0.3);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .book-spine:hover {
+    transform: translateY(-16px) scale(1.04);
+    box-shadow: 6px 0 20px rgba(0,0,0,0.5), inset -3px 0 6px rgba(0,0,0,0.2);
+    z-index: 10;
+  }
+
+  .book-spine-inner {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 10px 6px;
+    position: relative;
+  }
+
+  .spine-title {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-family: 'Playfair Display', serif;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    overflow: hidden;
+    max-height: 110px;
+    text-overflow: ellipsis;
+  }
+
+  .spine-author {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-size: 0.55rem;
+    opacity: 0.75;
+    font-style: italic;
+    letter-spacing: 0.04em;
+    overflow: hidden;
+    max-height: 50px;
+  }
+
+  .spine-ornament {
+    width: 28px;
+    height: 2px;
+    background: rgba(255,255,255,0.25);
+    margin: 4px auto;
+    border-radius: 1px;
+  }
+
+  .book-progress-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: rgba(0,0,0,0.3);
+  }
+  .book-progress-fill {
+    height: 100%;
+    background: rgba(255,255,255,0.5);
+    transition: width 0.3s;
+  }
+
+  .book-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute; inset: 0;
+    opacity: 0.3;
+  }
+
+  /* Book color palettes */
+  .book-color-0 { background: linear-gradient(180deg, #6b1a1a 0%, #8b2020 50%, #5a1010 100%); color: #ffd9d9; }
+  .book-color-1 { background: linear-gradient(180deg, #1a3a5c 0%, #1e4976 50%, #0f2840 100%); color: #c8e0ff; }
+  .book-color-2 { background: linear-gradient(180deg, #1a4a1a 0%, #215421 50%, #0f300f 100%); color: #c0ffb8; }
+  .book-color-3 { background: linear-gradient(180deg, #4a3a1a 0%, #5c4820 50%, #332810 100%); color: #ffe8b0; }
+  .book-color-4 { background: linear-gradient(180deg, #3a1a4a 0%, #4a2060 50%, #280f38 100%); color: #e8c0ff; }
+  .book-color-5 { background: linear-gradient(180deg, #1a4a4a 0%, #205c5c 50%, #0f3030 100%); color: #b0f0f0; }
+  .book-color-6 { background: linear-gradient(180deg, #4a1a2a 0%, #5c2038 50%, #300f1e 100%); color: #ffc0d8; }
+  .book-color-7 { background: linear-gradient(180deg, #2a3a1a 0%, #384c20 50%, #1c2c10 100%); color: #d8ffb0; }
+
+  /* ─── EMPTY STATE ─── */
+  .empty-shelf {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 60px 20px;
+    color: rgba(200,144,42,0.4);
+    font-style: italic;
+    gap: 12px;
+    font-size: 1.1rem;
+  }
+  .empty-shelf svg { opacity: 0.3; }
+
+  /* ─── UPLOAD ZONE ─── */
+  .upload-zone {
+    border: 2px dashed rgba(200,144,42,0.3);
+    border-radius: 8px;
+    padding: 48px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 24px;
+    background: rgba(200,144,42,0.03);
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--amber);
+    background: rgba(200,144,42,0.07);
+  }
+  .upload-zone h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    color: var(--amber-light);
+    margin-bottom: 8px;
+    font-weight: 400;
+  }
+  .upload-zone p { color: var(--paper-darker); font-size: 0.95rem; }
+  .upload-formats {
+    margin-top: 12px;
+    font-size: 0.82rem;
+    color: rgba(200,144,42,0.5);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  #file-input { display: none; }
+
+  /* ─── READER VIEW ─── */
+  #reader-view {
+    display: none;
+    flex-direction: column;
+    height: 100vh;
+  }
+  #reader-view.active { display: flex; }
+
+  .reader-topbar {
+    background: #0d0900;
+    border-bottom: 1px solid var(--amber-dark);
+    padding: 12px 28px;
+    display: flex; align-items: center; gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .reader-book-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: var(--amber-light);
+    font-style: italic;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .reader-chapter-select {
+    background: rgba(200,144,42,0.1);
+    border: 1px solid rgba(200,144,42,0.3);
+    color: var(--paper);
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.9rem;
+    padding: 5px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    max-width: 220px;
+  }
+
+  /* ─── READER LAYOUT ─── */
+  .reader-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ─── SEARCH PANEL ─── */
+  .search-panel {
+    width: 320px;
+    flex-shrink: 0;
+    background: #110e07;
+    border-right: 1px solid rgba(200,144,42,0.15);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    transition: width 0.3s;
+  }
+  .search-panel.collapsed { width: 0; }
+
+  .search-header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid rgba(200,144,42,0.12);
+    flex-shrink: 0;
+  }
+
+  .search-input-wrap {
+    position: relative;
+  }
+  .search-input {
+    width: 100%;
+    background: rgba(200,144,42,0.08);
+    border: 1px solid rgba(200,144,42,0.25);
+    color: var(--paper);
+    font-family: 'Crimson Pro', serif;
+    font-size: 1rem;
+    padding: 9px 36px 9px 12px;
+    border-radius: var(--radius);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--amber); }
+  .search-input::placeholder { color: rgba(200,144,42,0.35); font-style: italic; }
+
+  .search-clear {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: rgba(200,144,42,0.4);
+    cursor: pointer; font-size: 1rem; display: none;
+  }
+  .search-clear.visible { display: block; }
+
+  .search-count {
+    font-size: 0.78rem;
+    color: var(--paper-darker);
+    margin-top: 8px;
+    font-style: italic;
+    min-height: 16px;
+  }
+
+  .search-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  .search-results::-webkit-scrollbar { width: 4px; }
+  .search-results::-webkit-scrollbar-track { background: transparent; }
+  .search-results::-webkit-scrollbar-thumb { background: rgba(200,144,42,0.2); border-radius: 2px; }
+
+  .search-result-item {
+    padding: 12px 18px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(200,144,42,0.07);
+    transition: background 0.15s;
+  }
+  .search-result-item:hover { background: rgba(200,144,42,0.07); }
+  .search-result-item.active { background: rgba(200,144,42,0.12); border-left: 3px solid var(--amber); }
+
+  .result-chapter {
+    font-size: 0.72rem;
+    color: var(--amber);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .result-snippet {
+    font-size: 0.88rem;
+    color: var(--paper-darker);
+    line-height: 1.5;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+  .result-snippet mark {
+    background: rgba(200,144,42,0.35);
+    color: var(--amber-light);
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+  .result-position {
+    font-size: 0.7rem;
+    color: rgba(200,144,42,0.35);
+    margin-top: 4px;
+  }
+
+  /* ─── TEXT CONTENT ─── */
+  .reader-content-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 48px;
+    background: #160f06;
+    position: relative;
+  }
+  .reader-content-wrap::-webkit-scrollbar { width: 6px; }
+  .reader-content-wrap::-webkit-scrollbar-track { background: transparent; }
+  .reader-content-wrap::-webkit-scrollbar-thumb { background: rgba(200,144,42,0.2); border-radius: 3px; }
+
+  .reader-content {
+    max-width: 680px;
+    margin: 0 auto;
+    font-size: 1.15rem;
+    line-height: 1.85;
+    color: #e8dfc8;
+    font-weight: 300;
+  }
+
+  .reader-content p { margin-bottom: 1.2em; }
+  .reader-content h1, .reader-content h2, .reader-content h3 {
+    font-family: 'Playfair Display', serif;
+    color: var(--paper);
+    margin: 1.5em 0 0.6em;
+    font-weight: 400;
+  }
+  .reader-content h1 { font-size: 1.8rem; }
+  .reader-content h2 { font-size: 1.4rem; }
+
+  .highlight-current {
+    background: rgba(200,144,42,0.2);
+    border-radius: 2px;
+    transition: background 0.3s;
+  }
+  .highlight-search {
+    background: rgba(200,144,42,0.15);
+    border-radius: 2px;
+  }
+  .highlight-search.active-search {
+    background: rgba(200,144,42,0.4);
+    outline: 1px solid var(--amber);
+  }
+
+  /* ─── PLAYBACK BAR ─── */
+  .playback-bar {
+    background: #0a0700;
+    border-top: 1px solid rgba(200,144,42,0.2);
+    padding: 16px 28px;
+    display: flex; align-items: center; gap: 20px;
+    flex-shrink: 0;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+  }
+
+  .playback-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--amber-light); transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    padding: 6px; border-radius: 50%;
+  }
+  .playback-btn:hover { color: var(--amber-light); background: rgba(200,144,42,0.12); }
+  .playback-btn.play-pause {
+    width: 48px; height: 48px;
+    background: var(--amber-dark);
+    border: 1px solid var(--amber);
+    color: var(--paper);
+    border-radius: 50%;
+  }
+  .playback-btn.play-pause:hover { background: var(--amber); }
+
+  .playback-progress-wrap {
+    flex: 1; display: flex; flex-direction: column; gap: 4px;
+  }
+  .playback-progress-track {
+    height: 4px;
+    background: rgba(200,144,42,0.15);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+  }
+  .playback-progress-fill {
+    height: 100%; background: var(--amber);
+    border-radius: 2px; width: 0%; transition: width 0.3s;
+  }
+  .playback-time {
+    font-size: 0.78rem;
+    color: var(--paper-darker);
+    display: flex; justify-content: space-between;
+  }
+
+  .speed-control {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.85rem; color: var(--paper-darker);
+  }
+  .speed-btn {
+    background: rgba(200,144,42,0.1);
+    border: 1px solid rgba(200,144,42,0.25);
+    color: var(--amber-light);
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.85rem;
+    padding: 4px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 44px; text-align: center;
+  }
+  .speed-btn:hover { background: rgba(200,144,42,0.2); }
+
+  .voice-select-wrap {
+    display: flex; flex-direction: column; gap: 3px;
+    font-size: 0.78rem; color: var(--paper-darker);
+  }
+  .voice-select {
+    background: rgba(200,144,42,0.08);
+    border: 1px solid rgba(200,144,42,0.25);
+    color: var(--paper);
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.85rem;
+    padding: 5px 8px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    max-width: 180px;
+  }
+
+  .search-toggle-btn {
+    background: none; border: 1px solid rgba(200,144,42,0.25);
+    color: var(--amber-light); cursor: pointer;
+    padding: 6px 10px; border-radius: var(--radius);
+    transition: all 0.2s; display: flex; align-items: center; gap: 5px;
+    font-family: 'Crimson Pro', serif; font-size: 0.85rem;
+  }
+  .search-toggle-btn:hover { border-color: var(--amber); background: rgba(200,144,42,0.1); }
+  .search-toggle-btn.active { background: rgba(200,144,42,0.15); border-color: var(--amber); }
+
+  /* ─── BOOK CONTEXT MENU ─── */
+  .book-menu {
+    position: fixed;
+    background: #1a1208;
+    border: 1px solid rgba(200,144,42,0.3);
+    border-radius: 6px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    z-index: 1000;
+    overflow: hidden;
+    min-width: 160px;
+    display: none;
+  }
+  .book-menu.visible { display: block; }
+  .book-menu-item {
+    padding: 11px 18px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--paper);
+    transition: background 0.15s;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .book-menu-item:hover { background: rgba(200,144,42,0.1); }
+  .book-menu-item.danger { color: #ff8080; }
+  .book-menu-item.danger:hover { background: rgba(255,80,80,0.1); }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: #1a1208;
+    border: 1px solid rgba(200,144,42,0.4);
+    color: var(--paper);
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 9998;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ─── LOADING OVERLAY ─── */
+  .loading-overlay {
+    position: fixed; inset: 0;
+    background: rgba(10,7,0,0.85);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9000; gap: 16px;
+    display: none;
+  }
+  .loading-overlay.visible { display: flex; }
+  .loading-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(200,144,42,0.2);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .loading-text {
+    color: var(--amber-light);
+    font-style: italic;
+    font-size: 1rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── MISC ─── */
+  .divider { height: 1px; background: rgba(200,144,42,0.12); margin: 6px 0; }
+
+  @media (max-width: 700px) {
+    header { padding: 14px 16px; }
+    #library-view { padding: 24px 16px; }
+    .reader-content-wrap { padding: 24px 18px; }
+    .search-panel { width: 260px; }
+    .playback-bar { padding: 12px 14px; gap: 12px; }
+    .voice-select-wrap { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <rect x="3" y="4" width="14" height="19" rx="1.5" fill="none" stroke="#c8902a" stroke-width="1.5"/>
+      <rect x="6" y="4" width="14" height="19" rx="1.5" fill="none" stroke="#c8902a" stroke-width="1.5" opacity="0.5"/>
+      <line x1="6" y1="9" x2="14" y2="9" stroke="#c8902a" stroke-width="1" opacity="0.6"/>
+      <line x1="6" y1="12" x2="14" y2="12" stroke="#c8902a" stroke-width="1" opacity="0.4"/>
+      <line x1="6" y1="15" x2="11" y2="15" stroke="#c8902a" stroke-width="1" opacity="0.4"/>
+    </svg>
+    PersonalLibrary
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" id="back-to-library" style="display:none">← Library</button>
+    <button class="btn btn-primary" id="add-book-btn" onclick="document.getElementById('file-input').click()">
+      + Add Book
+    </button>
+    <input type="file" id="file-input" accept=".epub,.txt,.html,.htm" multiple>
+  </div>
+</header>
+
+<!-- LIBRARY VIEW -->
+<div id="library-view" class="view active">
+  <div class="library-header">
+    <div>
+      <h1 class="library-title">Your <span>Library</span></h1>
+      <div class="library-count" id="library-count">No books yet</div>
+    </div>
+  </div>
+
+  <div class="shelf-container" id="shelf-container">
+    <div class="books-row" id="books-row">
+      <div class="empty-shelf" id="empty-shelf">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <rect x="8" y="10" width="20" height="28" rx="2" stroke="#c8902a" stroke-width="1.5"/>
+          <rect x="12" y="10" width="20" height="28" rx="2" stroke="#c8902a" stroke-width="1.5" opacity="0.5"/>
+        </svg>
+        Your shelf is empty — add your first book below
+      </div>
+    </div>
+    <div class="shelf-plank"></div>
+  </div>
+
+  <div class="upload-zone" id="upload-zone">
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="margin-bottom:12px;opacity:0.5">
+      <path d="M20 28V12M20 12L14 18M20 12L26 18" stroke="#c8902a" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M10 30h20" stroke="#c8902a" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+    </svg>
+    <h3>Drop books here to add them</h3>
+    <p>or click to browse your files</p>
+    <div class="upload-formats">EPUB · TXT · HTML</div>
+  </div>
+</div>
+
+<!-- READER VIEW -->
+<div id="reader-view" class="view">
+  <div class="reader-topbar">
+    <div class="reader-book-title" id="reader-title">—</div>
+    <select class="reader-chapter-select" id="chapter-select"></select>
+  </div>
+
+  <div class="reader-body">
+    <!-- Search Panel -->
+    <div class="search-panel collapsed" id="search-panel">
+      <div class="search-header">
+        <div class="search-input-wrap">
+          <input type="text" class="search-input" id="search-input" placeholder="Search in book…">
+          <button class="search-clear" id="search-clear">✕</button>
+        </div>
+        <div class="search-count" id="search-count"></div>
+      </div>
+      <div class="search-results" id="search-results"></div>
+    </div>
+
+    <!-- Text Content -->
+    <div class="reader-content-wrap" id="reader-content-wrap">
+      <div class="reader-content" id="reader-content"></div>
+    </div>
+  </div>
+
+  <!-- Playback Bar -->
+  <div class="playback-bar">
+    <button class="playback-btn" id="prev-sentence-btn" title="Previous sentence">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+        <rect x="3" y="4" width="2.5" height="12" rx="1"/>
+        <path d="M17 4L8 10L17 16V4Z"/>
+      </svg>
+    </button>
+
+    <button class="playback-btn play-pause" id="play-pause-btn" title="Play/Pause">
+      <svg id="play-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M6 4L16 10L6 16V4Z"/>
+      </svg>
+      <svg id="pause-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style="display:none">
+        <rect x="4" y="3" width="4" height="14" rx="1.5"/>
+        <rect x="12" y="3" width="4" height="14" rx="1.5"/>
+      </svg>
+    </button>
+
+    <button class="playback-btn" id="next-sentence-btn" title="Next sentence">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+        <rect x="14.5" y="4" width="2.5" height="12" rx="1"/>
+        <path d="M3 4L12 10L3 16V4Z"/>
+      </svg>
+    </button>
+
+    <div class="playback-progress-wrap">
+      <div class="playback-progress-track" id="progress-track">
+        <div class="playback-progress-fill" id="progress-fill"></div>
+      </div>
+      <div class="playback-time">
+        <span id="progress-text">0%</span>
+        <span id="chapter-label">—</span>
+      </div>
+    </div>
+
+    <div class="speed-control">
+      <button class="speed-btn" id="speed-down-btn">−</button>
+      <span id="speed-display">1×</span>
+      <button class="speed-btn" id="speed-up-btn">+</button>
+    </div>
+
+    <div class="voice-select-wrap">
+      <span>Voice</span>
+      <select class="voice-select" id="voice-select"></select>
+    </div>
+
+    <button class="search-toggle-btn" id="search-toggle-btn">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="6" cy="6" r="4"/>
+        <line x1="9.5" y1="9.5" x2="12" y2="12"/>
+      </svg>
+      Search
+    </button>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div class="book-menu" id="book-menu">
+  <div class="book-menu-item" id="menu-open">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h10v8H2z"/><line x1="4" y1="6" x2="10" y2="6"/><line x1="4" y1="8.5" x2="8" y2="8.5"/></svg>
+    Open
+  </div>
+  <div class="divider"></div>
+  <div class="book-menu-item danger" id="menu-delete">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h10M5 4V2.5h4V4M5.5 6.5v4M8.5 6.5v4M3 4l.8 7.5h6.4L11 4"/></svg>
+    Remove from Library
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">Parsing book…</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// DATABASE
+// ═══════════════════════════════════════════════
+const DB_NAME = 'PersonalLibrary';
+const DB_VER = 1;
+let db;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('books')) {
+        const store = d.createObjectStore('books', { keyPath: 'id' });
+        store.createIndex('title', 'title', { unique: false });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbGet(store, key) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbPut(store, value) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).put(value);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbDelete(store, key) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).delete(key);
+    req.onsuccess = () => res();
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function dbGetAll(store) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let books = [];
+let currentBook = null;
+let currentChapterIndex = 0;
+let sentences = [];
+let currentSentenceIndex = 0;
+let isPlaying = false;
+let speechRate = 1.0;
+let selectedVoice = null;
+let voices = [];
+let contextMenuBookId = null;
+let searchTimeout = null;
+let currentSearchResults = [];
+let currentSearchMatch = 0;
+
+// ═══════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════
+function showToast(msg, duration = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function showLoading(msg = 'Loading…') {
+  document.getElementById('loading-text').textContent = msg;
+  document.getElementById('loading-overlay').classList.add('visible');
+}
+
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.remove('visible');
+}
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const isReader = id === 'reader-view';
+  document.getElementById('back-to-library').style.display = isReader ? 'block' : 'none';
+  document.getElementById('add-book-btn').style.display = isReader ? 'none' : 'block';
+}
+
+// ═══════════════════════════════════════════════
+// EPUB PARSER
+// ═══════════════════════════════════════════════
+async function parseEpub(file) {
+  const zip = await JSZip.loadAsync(file);
+
+  // Find container.xml
+  const containerXml = await zip.file('META-INF/container.xml').async('text');
+  const parser = new DOMParser();
+  const containerDoc = parser.parseFromString(containerXml, 'application/xml');
+  const opfPath = containerDoc.querySelector('rootfile').getAttribute('full-path');
+  const opfDir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
+
+  // Parse OPF
+  const opfXml = await zip.file(opfPath).async('text');
+  const opfDoc = parser.parseFromString(opfXml, 'application/xml');
+
+  const title = opfDoc.querySelector('title')?.textContent || file.name.replace('.epub', '');
+  const author = opfDoc.querySelector('creator')?.textContent || 'Unknown Author';
+
+  // Get spine order
+  const spineItems = Array.from(opfDoc.querySelectorAll('spine itemref')).map(i => i.getAttribute('idref'));
+  const manifestItems = {};
+  opfDoc.querySelectorAll('manifest item').forEach(item => {
+    manifestItems[item.getAttribute('id')] = {
+      href: item.getAttribute('href'),
+      mediaType: item.getAttribute('media-type')
+    };
+  });
+
+  // Try to get cover image
+  let coverData = null;
+  const coverMeta = opfDoc.querySelector('meta[name="cover"]');
+  if (coverMeta) {
+    const coverId = coverMeta.getAttribute('content');
+    const coverItem = manifestItems[coverId];
+    if (coverItem) {
+      try {
+        const coverPath = opfDir + coverItem.href;
+        const coverFile = zip.file(coverPath) || zip.file(coverItem.href);
+        if (coverFile) {
+          const blob = await coverFile.async('blob');
+          coverData = URL.createObjectURL(blob);
+        }
+      } catch(e) {}
+    }
+  }
+
+  // Extract chapters
+  const chapters = [];
+  for (const idref of spineItems) {
+    const item = manifestItems[idref];
+    if (!item || !item.mediaType?.includes('html')) continue;
+    const filePath = opfDir + item.href;
+    const f = zip.file(filePath) || zip.file(item.href);
+    if (!f) continue;
+
+    const html = await f.async('text');
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // Remove scripts/styles
+    doc.querySelectorAll('script, style, nav').forEach(el => el.remove());
+
+    const bodyText = doc.body?.innerText || doc.body?.textContent || '';
+    const chapterTitle = doc.querySelector('h1, h2, h3, title')?.textContent?.trim() || `Chapter ${chapters.length + 1}`;
+
+    if (bodyText.trim().length < 50) continue;
+
+    chapters.push({
+      title: chapterTitle,
+      html: doc.body?.innerHTML || bodyText,
+      text: bodyText.trim()
+    });
+  }
+
+  return { title, author, chapters, coverData };
+}
+
+async function parseTxt(file) {
+  const text = await file.text();
+  const title = file.name.replace(/\.(txt|html|htm)$/i, '');
+  const paragraphs = text.split(/\n{2,}/).filter(p => p.trim().length > 0);
+  const html = paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('\n');
+  return {
+    title,
+    author: 'Unknown',
+    chapters: [{ title: title, html, text: text.trim() }],
+    coverData: null
+  };
+}
+
+async function parseHtml(file) {
+  const text = await file.text();
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'text/html');
+  doc.querySelectorAll('script, style').forEach(el => el.remove());
+  const title = doc.querySelector('title')?.textContent || file.name;
+  const bodyHtml = doc.body?.innerHTML || text;
+  const bodyText = doc.body?.textContent || text;
+  return {
+    title,
+    author: 'Unknown',
+    chapters: [{ title, html: bodyHtml, text: bodyText.trim() }],
+    coverData: null
+  };
+}
+
+// ═══════════════════════════════════════════════
+// LIBRARY UI
+// ═══════════════════════════════════════════════
+const BOOK_COLORS = 8;
+
+function colorFromTitle(title) {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) hash = title.charCodeAt(i) + ((hash << 5) - hash);
+  return Math.abs(hash) % BOOK_COLORS;
+}
+
+function renderLibrary() {
+  const row = document.getElementById('books-row');
+  const empty = document.getElementById('empty-shelf');
+  const countEl = document.getElementById('library-count');
+
+  row.querySelectorAll('.book-spine').forEach(b => b.remove());
+
+  if (books.length === 0) {
+    empty.style.display = 'flex';
+    countEl.textContent = 'No books yet';
+    return;
+  }
+
+  empty.style.display = 'none';
+  countEl.textContent = `${books.length} book${books.length !== 1 ? 's' : ''} in your collection`;
+
+  books.forEach(book => {
+    const colorIdx = colorFromTitle(book.title);
+    const spine = document.createElement('div');
+    spine.className = `book-spine book-color-${colorIdx}`;
+    spine.dataset.id = book.id;
+
+    const initials = book.title.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
+    const progress = book.progress || 0;
+
+    spine.innerHTML = `
+      <div class="book-spine-inner">
+        <div class="spine-ornament"></div>
+        <div class="spine-title">${book.title}</div>
+        <div class="spine-author">${book.author}</div>
+        <div class="spine-ornament"></div>
+      </div>
+      <div class="book-progress-bar">
+        <div class="book-progress-fill" style="width:${progress}%"></div>
+      </div>
+    `;
+
+    spine.addEventListener('click', (e) => {
+      if (e.button === 0) openBook(book.id);
+    });
+
+    spine.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showContextMenu(e.clientX, e.clientY, book.id);
+    });
+
+    row.appendChild(spine);
+  });
+}
+
+function showContextMenu(x, y, bookId) {
+  contextMenuBookId = bookId;
+  const menu = document.getElementById('book-menu');
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.classList.add('visible');
+}
+
+function hideContextMenu() {
+  document.getElementById('book-menu').classList.remove('visible');
+  contextMenuBookId = null;
+}
+
+// ═══════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════
+async function handleFiles(files) {
+  for (const file of files) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    showLoading(`Parsing "${file.name}"…`);
+    try {
+      let parsed;
+      if (ext === 'epub') parsed = await parseEpub(file);
+      else if (ext === 'txt') parsed = await parseTxt(file);
+      else if (ext === 'html' || ext === 'htm') parsed = await parseHtml(file);
+      else { showToast(`Unsupported format: .${ext}`); continue; }
+
+      const id = 'book_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const book = {
+        id,
+        title: parsed.title,
+        author: parsed.author,
+        chapters: parsed.chapters,
+        addedAt: Date.now(),
+        progress: 0,
+        lastChapter: 0,
+        lastSentence: 0,
+        lastVoice: null,
+        lastSpeed: 1.0
+      };
+
+      await dbPut('books', book);
+      books.push(book);
+      renderLibrary();
+      showToast(`"${parsed.title}" added to your library`);
+    } catch (err) {
+      console.error(err);
+      showToast(`Failed to parse "${file.name}"`);
+    }
+  }
+  hideLoading();
+}
+
+// ═══════════════════════════════════════════════
+// READER
+// ═══════════════════════════════════════════════
+function splitSentences(text) {
+  const raw = text.match(/[^.!?…]+[.!?…]+(\s|$)|[^.!?…]+$/g) || [text];
+  return raw.map(s => s.trim()).filter(s => s.length > 2);
+}
+
+async function openBook(id) {
+  const book = books.find(b => b.id === id);
+  if (!book) return;
+  currentBook = book;
+  currentChapterIndex = book.lastChapter || 0;
+  currentSentenceIndex = book.lastSentence || 0;
+
+  // Populate chapter select
+  const sel = document.getElementById('chapter-select');
+  sel.innerHTML = '';
+  book.chapters.forEach((ch, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = ch.title.slice(0, 50);
+    sel.appendChild(opt);
+  });
+  sel.value = currentChapterIndex;
+
+  document.getElementById('reader-title').textContent = book.title;
+  document.getElementById('voice-select').value = book.lastVoice || '';
+  speechRate = book.lastSpeed || 1.0;
+  updateSpeedDisplay();
+
+  loadChapter(currentChapterIndex, currentSentenceIndex);
+  showView('reader-view');
+}
+
+function loadChapter(chapterIdx, startSentence = 0) {
+  stopSpeech();
+  currentChapterIndex = chapterIdx;
+  currentSentenceIndex = startSentence;
+
+  const chapter = currentBook.chapters[chapterIdx];
+  if (!chapter) return;
+
+  document.getElementById('chapter-select').value = chapterIdx;
+  document.getElementById('chapter-label').textContent = chapter.title.slice(0, 40);
+
+  // Parse sentences from full text
+  sentences = splitSentences(chapter.text);
+
+  // Render HTML
+  const content = document.getElementById('reader-content');
+  content.innerHTML = chapter.html || chapter.text;
+
+  // Wrap text nodes in spans for highlighting
+  wrapTextNodes(content);
+
+  updateProgress();
+  highlightCurrentSentence();
+  scrollToCurrentSentence();
+}
+
+function wrapTextNodes(el) {
+  // We'll use a sentence-based highlight approach via the search spans
+  el.querySelectorAll('script, style').forEach(e => e.remove());
+}
+
+function highlightCurrentSentence() {
+  const content = document.getElementById('reader-content');
+  // Remove old highlight
+  content.querySelectorAll('.highlight-current').forEach(el => {
+    const parent = el.parentNode;
+    parent.replaceChild(document.createTextNode(el.textContent), el);
+    parent.normalize();
+  });
+
+  if (sentences.length === 0) return;
+  const sentence = sentences[currentSentenceIndex];
+  if (!sentence) return;
+
+  highlightTextInContent(content, sentence, 'highlight-current');
+  scrollToCurrentSentence();
+}
+
+function highlightTextInContent(container, text, className) {
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+  const cleanSearch = text.replace(/\s+/g, ' ').trim();
+  let node;
+  while (node = walker.nextNode()) {
+    const idx = node.nodeValue.indexOf(cleanSearch);
+    if (idx !== -1) {
+      const before = node.nodeValue.substring(0, idx);
+      const match = node.nodeValue.substring(idx, idx + cleanSearch.length);
+      const after = node.nodeValue.substring(idx + cleanSearch.length);
+      const span = document.createElement('span');
+      span.className = className;
+      span.textContent = match;
+      const parent = node.parentNode;
+      parent.insertBefore(document.createTextNode(before), node);
+      parent.insertBefore(span, node);
+      parent.insertBefore(document.createTextNode(after), node);
+      parent.removeChild(node);
+      return span;
+    }
+  }
+  return null;
+}
+
+function scrollToCurrentSentence() {
+  const el = document.querySelector('.highlight-current');
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function updateProgress() {
+  if (!currentBook) return;
+  const totalSentences = currentBook.chapters.reduce((acc, ch) => acc + splitSentences(ch.text).length, 0);
+  let sentencesBefore = 0;
+  for (let i = 0; i < currentChapterIndex; i++) {
+    sentencesBefore += splitSentences(currentBook.chapters[i].text).length;
+  }
+  const globalSentence = sentencesBefore + currentSentenceIndex;
+  const pct = totalSentences > 0 ? Math.round((globalSentence / totalSentences) * 100) : 0;
+
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = pct + '%';
+  currentBook.progress = pct;
+  currentBook.lastChapter = currentChapterIndex;
+  currentBook.lastSentence = currentSentenceIndex;
+  dbPut('books', currentBook);
+
+  // Update spine progress bar
+  const spine = document.querySelector(`.book-spine[data-id="${currentBook.id}"] .book-progress-fill`);
+  if (spine) spine.style.width = pct + '%';
+}
+
+// ═══════════════════════════════════════════════
+// SPEECH
+// ═══════════════════════════════════════════════
+let currentUtterance = null;
+
+function speak(text) {
+  stopSpeech();
+  if (!text) return;
+
+  currentUtterance = new SpeechSynthesisUtterance(text);
+  currentUtterance.rate = speechRate;
+
+  if (selectedVoice) currentUtterance.voice = selectedVoice;
+
+  currentUtterance.onend = () => {
+    advanceSentence();
+  };
+
+  currentUtterance.onerror = (e) => {
+    if (e.error !== 'interrupted') advanceSentence();
+  };
+
+  window.speechSynthesis.speak(currentUtterance);
+  isPlaying = true;
+  updatePlayPauseUI();
+}
+
+function stopSpeech() {
+  window.speechSynthesis.cancel();
+  isPlaying = false;
+  updatePlayPauseUI();
+}
+
+function pauseSpeech() {
+  window.speechSynthesis.pause();
+  isPlaying = false;
+  updatePlayPauseUI();
+}
+
+function resumeSpeech() {
+  window.speechSynthesis.resume();
+  isPlaying = true;
+  updatePlayPauseUI();
+}
+
+function playCurrentSentence() {
+  const sentence = sentences[currentSentenceIndex];
+  if (sentence) speak(sentence);
+}
+
+function advanceSentence() {
+  if (currentSentenceIndex < sentences.length - 1) {
+    currentSentenceIndex++;
+    highlightCurrentSentence();
+    updateProgress();
+    if (isPlaying) playCurrentSentence();
+  } else {
+    // Next chapter
+    if (currentChapterIndex < currentBook.chapters.length - 1) {
+      loadChapter(currentChapterIndex + 1, 0);
+      if (isPlaying) playCurrentSentence();
+    } else {
+      stopSpeech();
+      showToast('End of book reached');
+    }
+  }
+}
+
+function updatePlayPauseUI() {
+  const pi = document.getElementById('play-icon');
+  const pau = document.getElementById('pause-icon');
+  if (isPlaying) { pi.style.display = 'none'; pau.style.display = 'block'; }
+  else { pi.style.display = 'block'; pau.style.display = 'none'; }
+}
+
+function updateSpeedDisplay() {
+  document.getElementById('speed-display').textContent = speechRate.toFixed(1).replace('.0','') + '×';
+}
+
+// ═══════════════════════════════════════════════
+// VOICES
+// ═══════════════════════════════════════════════
+function loadVoices() {
+  voices = window.speechSynthesis.getVoices();
+  const sel = document.getElementById('voice-select');
+  sel.innerHTML = '';
+
+  if (voices.length === 0) {
+    const opt = document.createElement('option');
+    opt.textContent = 'Default voice';
+    sel.appendChild(opt);
+    return;
+  }
+
+  // Sort: natural-sounding first
+  const preferred = ['Samantha','Alex','Daniel','Karen','Moira','Fiona','Aria','Guy','Zira','David','Google US English','Google UK English Female'];
+  const sorted = [...voices].sort((a, b) => {
+    const ai = preferred.findIndex(p => a.name.includes(p));
+    const bi = preferred.findIndex(p => b.name.includes(p));
+    if (ai === -1 && bi === -1) return a.name.localeCompare(b.name);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+
+  sorted.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = `${v.name} (${v.lang})`;
+    sel.appendChild(opt);
+  });
+
+  // Restore saved voice
+  if (currentBook?.lastVoice) {
+    sel.value = currentBook.lastVoice;
+    selectedVoice = voices.find(v => v.name === currentBook.lastVoice) || null;
+  }
+
+  if (!selectedVoice && sorted.length > 0) {
+    selectedVoice = sorted[0];
+    sel.value = sorted[0].name;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════
+function doSearch(query) {
+  const resultsEl = document.getElementById('search-results');
+  const countEl = document.getElementById('search-count');
+  currentSearchResults = [];
+  currentSearchMatch = 0;
+
+  // Clear previous search highlights
+  clearSearchHighlights();
+
+  if (!query || query.length < 2) {
+    resultsEl.innerHTML = '';
+    countEl.textContent = '';
+    return;
+  }
+
+  const lower = query.toLowerCase();
+  const results = [];
+
+  currentBook.chapters.forEach((ch, chIdx) => {
+    const text = ch.text;
+    const sentences = splitSentences(text);
+    sentences.forEach((s, sIdx) => {
+      if (s.toLowerCase().includes(lower)) {
+        // Build snippet with highlight
+        const matchIdx = s.toLowerCase().indexOf(lower);
+        const start = Math.max(0, matchIdx - 60);
+        const end = Math.min(s.length, matchIdx + query.length + 60);
+        let snippet = (start > 0 ? '…' : '') + s.slice(start, end) + (end < s.length ? '…' : '');
+        const snippetLower = snippet.toLowerCase();
+        const hi = snippetLower.indexOf(lower);
+        if (hi !== -1) {
+          snippet = snippet.slice(0, hi) + '<mark>' + snippet.slice(hi, hi + query.length) + '</mark>' + snippet.slice(hi + query.length);
+        }
+        results.push({ chIdx, sIdx, chTitle: ch.title, snippet, sentence: s });
+      }
+    });
+  });
+
+  currentSearchResults = results;
+  countEl.textContent = results.length === 0 ? 'No results' : `${results.length} result${results.length !== 1 ? 's' : ''}`;
+
+  resultsEl.innerHTML = '';
+  results.forEach((r, i) => {
+    const item = document.createElement('div');
+    item.className = 'search-result-item';
+    item.innerHTML = `
+      <div class="result-chapter">${r.chTitle.slice(0,40)}</div>
+      <div class="result-snippet">${r.snippet}</div>
+    `;
+    item.addEventListener('click', () => {
+      jumpToResult(i);
+    });
+    resultsEl.appendChild(item);
+  });
+}
+
+function jumpToResult(idx) {
+  const r = currentSearchResults[idx];
+  if (!r) return;
+
+  // Update active item
+  document.querySelectorAll('.search-result-item').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  currentSearchMatch = idx;
+
+  // Load chapter if needed
+  if (r.chIdx !== currentChapterIndex) {
+    loadChapter(r.chIdx, r.sIdx);
+  } else {
+    currentSentenceIndex = r.sIdx;
+    highlightCurrentSentence();
+    updateProgress();
+  }
+}
+
+function clearSearchHighlights() {
+  const content = document.getElementById('reader-content');
+  content.querySelectorAll('.highlight-search').forEach(el => {
+    const parent = el.parentNode;
+    parent.replaceChild(document.createTextNode(el.textContent), el);
+    parent.normalize();
+  });
+}
+
+// ═══════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════
+document.getElementById('file-input').addEventListener('change', e => {
+  handleFiles(Array.from(e.target.files));
+  e.target.value = '';
+});
+
+document.getElementById('upload-zone').addEventListener('click', () => {
+  document.getElementById('file-input').click();
+});
+
+document.getElementById('upload-zone').addEventListener('dragover', e => {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+});
+
+document.getElementById('upload-zone').addEventListener('dragleave', e => {
+  e.currentTarget.classList.remove('drag-over');
+});
+
+document.getElementById('upload-zone').addEventListener('drop', e => {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  handleFiles(Array.from(e.dataTransfer.files));
+});
+
+document.getElementById('back-to-library').addEventListener('click', () => {
+  stopSpeech();
+  showView('library-view');
+  renderLibrary();
+});
+
+document.getElementById('chapter-select').addEventListener('change', e => {
+  loadChapter(parseInt(e.target.value), 0);
+});
+
+// Play/Pause
+document.getElementById('play-pause-btn').addEventListener('click', () => {
+  if (window.speechSynthesis.paused) {
+    resumeSpeech();
+  } else if (isPlaying) {
+    pauseSpeech();
+  } else {
+    isPlaying = true;
+    playCurrentSentence();
+  }
+});
+
+// Prev/Next sentence
+document.getElementById('prev-sentence-btn').addEventListener('click', () => {
+  if (currentSentenceIndex > 0) {
+    currentSentenceIndex--;
+    highlightCurrentSentence();
+    updateProgress();
+    if (isPlaying) playCurrentSentence();
+  }
+});
+
+document.getElementById('next-sentence-btn').addEventListener('click', () => {
+  stopSpeech();
+  advanceSentence();
+});
+
+// Speed
+const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
+document.getElementById('speed-up-btn').addEventListener('click', () => {
+  const idx = speeds.findIndex(s => s >= speechRate);
+  const next = speeds[Math.min(idx + 1, speeds.length - 1)];
+  speechRate = next;
+  if (currentUtterance) currentUtterance.rate = speechRate;
+  updateSpeedDisplay();
+  if (currentBook) { currentBook.lastSpeed = speechRate; dbPut('books', currentBook); }
+  if (isPlaying) { stopSpeech(); isPlaying = true; playCurrentSentence(); }
+});
+
+document.getElementById('speed-down-btn').addEventListener('click', () => {
+  const idx = speeds.findIndex(s => s >= speechRate);
+  const prev = speeds[Math.max(idx - 1, 0)];
+  speechRate = prev;
+  updateSpeedDisplay();
+  if (currentBook) { currentBook.lastSpeed = speechRate; dbPut('books', currentBook); }
+  if (isPlaying) { stopSpeech(); isPlaying = true; playCurrentSentence(); }
+});
+
+// Voice
+document.getElementById('voice-select').addEventListener('change', e => {
+  const voiceName = e.target.value;
+  selectedVoice = voices.find(v => v.name === voiceName) || null;
+  if (currentBook) { currentBook.lastVoice = voiceName; dbPut('books', currentBook); }
+  if (isPlaying) { stopSpeech(); isPlaying = true; playCurrentSentence(); }
+});
+
+// Speech synthesis voices loaded
+window.speechSynthesis.onvoiceschanged = loadVoices;
+
+// Search toggle
+document.getElementById('search-toggle-btn').addEventListener('click', () => {
+  const panel = document.getElementById('search-panel');
+  const btn = document.getElementById('search-toggle-btn');
+  const collapsed = panel.classList.toggle('collapsed');
+  btn.classList.toggle('active', !collapsed);
+  if (!collapsed) document.getElementById('search-input').focus();
+});
+
+// Search input
+document.getElementById('search-input').addEventListener('input', e => {
+  const q = e.target.value;
+  document.getElementById('search-clear').classList.toggle('visible', q.length > 0);
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => doSearch(q), 200);
+});
+
+document.getElementById('search-clear').addEventListener('click', () => {
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-clear').classList.remove('visible');
+  doSearch('');
+});
+
+// Context menu
+document.getElementById('menu-open').addEventListener('click', () => {
+  if (contextMenuBookId) openBook(contextMenuBookId);
+  hideContextMenu();
+});
+
+document.getElementById('menu-delete').addEventListener('click', async () => {
+  if (!contextMenuBookId) return;
+  const bookTitle = books.find(b => b.id === contextMenuBookId)?.title;
+  await dbDelete('books', contextMenuBookId);
+  books = books.filter(b => b.id !== contextMenuBookId);
+  renderLibrary();
+  hideContextMenu();
+  showToast(`"${bookTitle}" removed`);
+});
+
+document.addEventListener('click', (e) => {
+  if (!document.getElementById('book-menu').contains(e.target)) {
+    hideContextMenu();
+  }
+});
+
+// Progress bar click
+document.getElementById('progress-track').addEventListener('click', e => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  const target = Math.floor(pct * sentences.length);
+  currentSentenceIndex = Math.max(0, Math.min(target, sentences.length - 1));
+  highlightCurrentSentence();
+  updateProgress();
+  if (isPlaying) { stopSpeech(); isPlaying = true; playCurrentSentence(); }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (!currentBook) return;
+  if (e.code === 'Space') {
+    e.preventDefault();
+    document.getElementById('play-pause-btn').click();
+  } else if (e.code === 'ArrowRight') {
+    document.getElementById('next-sentence-btn').click();
+  } else if (e.code === 'ArrowLeft') {
+    document.getElementById('prev-sentence-btn').click();
+  }
+});
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+async function init() {
+  await openDB();
+  books = await dbGetAll('books');
+  books.sort((a, b) => b.addedAt - a.addedAt);
+  renderLibrary();
+  loadVoices();
+  // Some browsers need a delay for voices
+  setTimeout(loadVoices, 500);
+}
+
+init();
+</script>
+</body>
+</html>
