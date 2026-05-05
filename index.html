@@ -110,7 +110,8 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 /* READER BODY */
 .reader-body { flex:1; display:flex; overflow:hidden; position:relative; }
 .page-wrap { flex:1; position:relative; overflow:hidden; display:flex; align-items:stretch; }
-.page-arrow { position:absolute; top:0; bottom:0; width:300px; display:flex; align-items:center; justify-content:center; opacity:1; transition:opacity 0.2s; cursor:pointer; z-index:50; pointer-events:all; }
+.page-arrow { position:absolute; top:0; bottom:0; width:300px; display:flex; align-items:center; justify-content:center; opacity:1; transition:opacity 0.2s; cursor:pointer; z-index:50; pointer-events:none; }
+#reader-view .page-arrow { pointer-events:all; }
 .page-arrow.left { left:0; background:linear-gradient(90deg,rgba(8,4,0,0.88) 0%,rgba(8,4,0,0.55) 40%,rgba(8,4,0,0.15) 75%,transparent 100%); }
 .page-arrow.right { right:0; background:linear-gradient(270deg,rgba(8,4,0,0.88) 0%,rgba(8,4,0,0.55) 40%,rgba(8,4,0,0.15) 75%,transparent 100%); }
 .page-arrow svg { color:rgba(200,144,42,0.0); transition:color 0.2s,transform 0.15s; }
@@ -396,7 +397,7 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
 .brightness-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0);
-  pointer-events: none;
+  pointer-events: none !important;
   z-index: 350;
   transition: background 0.2s;
 }
@@ -626,7 +627,7 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
     <button class="btn btn-ghost" id="settings-btn" onclick="showSettingsView()">⚙ Settings</button>
     <button class="btn btn-ghost" id="back-btn" style="display:none" onclick="goToLibrary()">← Library</button>
     <button class="btn btn-danger" id="remove-book-btn" style="display:none" onclick="confirmRemoveCurrentBook()">✕ Remove Book</button>
-    <button class="btn btn-primary" id="add-btn" onclick="document.getElementById('file-input').click()">+ Add Book</button>
+    <button class="btn btn-primary" id="add-btn" onclick="var fi=document.getElementById('file-input');fi.value='';fi.click();">+ Add Book</button>
   </div>
 </header>
 <input type="file" id="file-input" accept=".epub,.txt,.html,.htm" multiple style="display:none">
@@ -2156,7 +2157,9 @@ document.getElementById('file-input').addEventListener('change',e=>{ handleFiles
 const uz=document.getElementById('upload-zone');
 uz.addEventListener('click', e => {
   e.stopPropagation();
-  document.getElementById('file-input').click();
+  const fi = document.getElementById('file-input');
+  fi.value = '';
+  fi.click();
 });
 uz.addEventListener('dragenter', e=>{e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over');});
 uz.addEventListener('dragover',  e=>{e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over');});
