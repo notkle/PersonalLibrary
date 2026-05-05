@@ -152,15 +152,16 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 .si-snippet mark { background:rgba(200,144,42,0.3); color:var(--amber-light); border-radius:1px; padding:0 1px; font-style:normal; }
 
 /* DOCK */
-.dock-wrap { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:min(860px,96vw); z-index:400; transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); }
-.dock-wrap.collapsed { transform:translateX(-50%) translateY(calc(100% - 10px)); }
-body.in-library .dock-wrap { transform:translateX(-50%) translateY(100%) !important; }
-.dock-toggle { position:absolute; top:-18px; left:50%; transform:translateX(-50%); width:48px; height:18px; background:rgba(12,8,2,0.97); border:1px solid rgba(200,144,42,0.25); border-bottom:none; border-radius:8px 8px 0 0; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:1; transition:background 0.15s; }
+.dock-wrap { position:fixed; bottom:0; left:0; right:0; z-index:400; transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+.dock-wrap.collapsed { transform:translateY(calc(100% - 10px)); }
+body.in-library .dock-wrap { transform:translateY(100%) !important; }
+.dock-toggle { position:absolute; top:-18px; left:50%; transform:translateX(-50%); width:48px; height:18px; background:rgba(12,8,2,0.97); border:1px solid rgba(200,144,42,0.25); border-bottom:none; border-radius:8px 8px 0 0; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:1; transition:background 0.15s; white-space:nowrap; }
 .dock-toggle:hover { background:rgba(30,20,5,0.99); }
 .dock-toggle svg { color:rgba(200,144,42,0.6); transition:transform 0.3s, color 0.15s; }
 .dock-toggle:hover svg { color:var(--amber-light); }
 .dock-wrap.collapsed .dock-toggle svg { transform:rotate(180deg); }
-.dock { width:100%; background:rgba(12,8,2,0.97); border:1px solid rgba(200,144,42,0.25); border-bottom:none; border-radius:14px 14px 0 0; padding:14px 20px 16px; display:flex; align-items:center; gap:14px; box-shadow:0 -4px 32px rgba(0,0,0,0.6); backdrop-filter:blur(12px); }
+.dock { width:100%; background:rgba(12,8,2,0.97); border-top:1px solid rgba(200,144,42,0.25); border-bottom:none; padding:12px 0 14px; display:flex; align-items:center; justify-content:center; gap:10px; box-shadow:0 -4px 32px rgba(0,0,0,0.6); backdrop-filter:blur(12px); }
+.dock-inner { display:flex; align-items:center; gap:10px; width:100%; max-width:1100px; padding:0 24px; }
 .dock-btn { background:none; border:none; cursor:pointer; color:rgba(200,144,42,0.7); display:flex; align-items:center; justify-content:center; padding:7px; border-radius:50%; transition:color 0.15s,background 0.15s; flex-shrink:0; }
 .dock-btn:hover { color:var(--amber-light); background:rgba(200,144,42,0.1); }
 .dock-playpause { width:46px; height:46px; background:var(--amber-dark); border:1.5px solid var(--amber) !important; color:var(--paper) !important; border-radius:50%; flex-shrink:0; }
@@ -253,6 +254,142 @@ body.in-library .dock-wrap { transform:translateX(-50%) translateY(100%) !import
 
 /* YouTube hidden player */
 #yt-player { position:fixed; width:1px; height:1px; opacity:0; pointer-events:none; left:-9999px; top:-9999px; }
+
+
+/* FLOATING READER SETTINGS PANEL */
+.reader-settings-overlay {
+  position: fixed; inset: 0; z-index: 600;
+  pointer-events: none;
+}
+.reader-settings-overlay.show { pointer-events: all; }
+
+.reader-settings-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0);
+  transition: background 0.25s;
+}
+.reader-settings-overlay.show .reader-settings-backdrop {
+  background: rgba(0,0,0,0.45);
+}
+
+.reader-settings-panel {
+  position: absolute;
+  top: 56px; right: 0;
+  width: 340px;
+  height: calc(100vh - 56px);
+  background: #0f0a04;
+  border-left: 1px solid rgba(200,144,42,0.22);
+  box-shadow: -8px 0 40px rgba(0,0,0,0.7);
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  overflow: hidden;
+}
+.reader-settings-overlay.show .reader-settings-panel {
+  transform: translateX(0);
+}
+
+.rsp-header {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(200,144,42,0.12);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.rsp-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem; color: var(--amber-light);
+  font-weight: 400; letter-spacing: 0.04em;
+}
+.rsp-close {
+  background: none; border: none; color: rgba(200,144,42,0.45);
+  cursor: pointer; font-size: 1.1rem; line-height: 1;
+  transition: color 0.15s; padding: 2px 4px;
+}
+.rsp-close:hover { color: var(--amber-light); }
+
+.rsp-body {
+  flex: 1; overflow-y: auto; padding: 18px 20px 24px;
+}
+.rsp-body::-webkit-scrollbar { width: 3px; }
+.rsp-body::-webkit-scrollbar-thumb { background: rgba(200,144,42,0.2); border-radius: 2px; }
+
+.rsp-section { margin-bottom: 24px; }
+.rsp-section-title {
+  font-size: 0.7rem; color: rgba(200,144,42,0.5);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 12px; padding-bottom: 6px;
+  border-bottom: 1px solid rgba(200,144,42,0.08);
+}
+
+/* Font size slider */
+.rsp-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.rsp-label { font-size: 0.82rem; color: var(--paper-dark); min-width: 80px; }
+.rsp-slider {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 3px; background: rgba(200,144,42,0.15);
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+.rsp-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--amber); border: 2px solid var(--amber-dark); cursor: pointer; }
+.rsp-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--amber); border: 2px solid var(--amber-dark); cursor: pointer; }
+.rsp-val { font-size: 0.78rem; color: var(--amber-light); min-width: 36px; text-align: right; }
+
+/* Theme buttons */
+.theme-btns { display: flex; gap: 8px; }
+.theme-btn {
+  flex: 1; padding: 8px 6px; border-radius: 4px;
+  border: 1.5px solid rgba(200,144,42,0.15);
+  cursor: pointer; font-family: 'Crimson Pro', serif;
+  font-size: 0.8rem; text-align: center;
+  transition: all 0.15s;
+}
+.theme-btn:hover { border-color: rgba(200,144,42,0.4); }
+.theme-btn.active { border-color: var(--amber); }
+.theme-dark  { background: #120d06; color: #e5dcc5; }
+.theme-sepia { background: #f4ecd8; color: #3a2c1a; }
+.theme-light { background: #f8f6f2; color: #1a1208; }
+
+/* Line height */
+.rsp-btn-row { display: flex; gap: 6px; }
+.rsp-tog-btn {
+  flex: 1; padding: 7px 4px; text-align: center;
+  background: rgba(200,144,42,0.06);
+  border: 1px solid rgba(200,144,42,0.15);
+  border-radius: 3px; cursor: pointer;
+  font-family: 'Crimson Pro', serif; font-size: 0.82rem;
+  color: var(--paper-dark); transition: all 0.15s;
+}
+.rsp-tog-btn:hover { background: rgba(200,144,42,0.12); border-color: rgba(200,144,42,0.3); color: var(--paper); }
+.rsp-tog-btn.active { background: rgba(200,144,42,0.18); border-color: var(--amber); color: var(--amber-light); }
+
+/* Ambient sounds in settings panel */
+.rsp-ambient-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; max-height: 160px; overflow-y: auto; }
+.rsp-ambient-list::-webkit-scrollbar { width: 3px; }
+.rsp-ambient-list::-webkit-scrollbar-thumb { background: rgba(200,144,42,0.2); }
+.rsp-ambient-opt { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 4px; cursor: pointer; border: 1px solid rgba(200,144,42,0.1); background: rgba(200,144,42,0.04); transition: all 0.15s; }
+.rsp-ambient-opt:hover { background: rgba(200,144,42,0.1); border-color: rgba(200,144,42,0.25); }
+.rsp-ambient-opt.active { background: rgba(200,144,42,0.18); border-color: var(--amber); }
+.rsp-ambient-name { flex: 1; font-size: 0.88rem; color: var(--paper); }
+
+/* Add sound mini form */
+.rsp-add-form { display: flex; flex-direction: column; gap: 7px; }
+.rsp-input { width: 100%; background: rgba(200,144,42,0.07); border: 1px solid rgba(200,144,42,0.2); color: var(--paper); font-family: 'Crimson Pro', serif; font-size: 0.88rem; padding: 7px 10px; border-radius: 3px; outline: none; transition: border-color 0.15s; }
+.rsp-input:focus { border-color: var(--amber); }
+.rsp-input::placeholder { color: rgba(200,144,42,0.28); font-style: italic; }
+.rsp-add-btn { background: rgba(200,144,42,0.12); border: 1px solid rgba(200,144,42,0.3); color: var(--amber-light); font-family: 'Crimson Pro', serif; font-size: 0.85rem; padding: 7px 14px; border-radius: 3px; cursor: pointer; transition: all 0.15s; width: 100%; }
+.rsp-add-btn:hover { background: rgba(200,144,42,0.22); border-color: var(--amber); }
+
+/* Topbar settings button */
+.topbar-settings-btn {
+  background: none; border: 1px solid rgba(200,144,42,0.22);
+  color: rgba(200,144,42,0.6); cursor: pointer;
+  padding: 5px 9px; border-radius: 3px;
+  font-size: 0.85rem; line-height: 1;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.topbar-settings-btn:hover, .topbar-settings-btn.active {
+  color: var(--amber-light); border-color: var(--amber);
+  background: rgba(200,144,42,0.08);
+}
 
 @media(max-width:680px){
   .reader-scroll{padding:36px 56px}
@@ -359,6 +496,7 @@ body.in-library .dock-wrap { transform:translateX(-50%) translateY(100%) !import
   <div class="reader-topbar">
     <div class="reader-book-title" id="reader-title"></div>
     <select class="chapter-select" id="chapter-select"></select>
+    <button class="topbar-settings-btn" id="topbar-settings-btn" onclick="toggleReaderSettings()" title="Settings">⚙</button>
   </div>
   <div class="reader-body">
     <div class="page-wrap" id="page-wrap">
@@ -388,6 +526,73 @@ body.in-library .dock-wrap { transform:translateX(-50%) translateY(100%) !import
   </div>
 </div>
 
+
+<!-- FLOATING READER SETTINGS PANEL -->
+<div class="reader-settings-overlay" id="reader-settings-overlay">
+  <div class="reader-settings-backdrop" onclick="closeReaderSettings()"></div>
+  <div class="reader-settings-panel">
+    <div class="rsp-header">
+      <span class="rsp-title">⚙ Reader Settings</span>
+      <button class="rsp-close" onclick="closeReaderSettings()">✕</button>
+    </div>
+    <div class="rsp-body">
+
+      <!-- APPEARANCE -->
+      <div class="rsp-section">
+        <div class="rsp-section-title">Appearance</div>
+        <div class="rsp-row">
+          <span class="rsp-label">Font size</span>
+          <input type="range" class="rsp-slider" id="rsp-fontsize" min="12" max="26" value="18" oninput="setFontSize(this.value)">
+          <span class="rsp-val" id="rsp-fontsize-val">18px</span>
+        </div>
+        <div class="rsp-row">
+          <span class="rsp-label">Line height</span>
+          <div class="rsp-btn-row" style="flex:1">
+            <button class="rsp-tog-btn" onclick="setLineHeight('1.5',this)">Tight</button>
+            <button class="rsp-tog-btn active" onclick="setLineHeight('1.9',this)">Normal</button>
+            <button class="rsp-tog-btn" onclick="setLineHeight('2.4',this)">Loose</button>
+          </div>
+        </div>
+        <div class="rsp-row" style="margin-top:4px">
+          <span class="rsp-label">Theme</span>
+          <div class="theme-btns" style="flex:1">
+            <button class="theme-btn theme-dark active" onclick="setTheme('dark',this)">Dark</button>
+            <button class="theme-btn theme-sepia" onclick="setTheme('sepia',this)">Sepia</button>
+            <button class="theme-btn theme-light" onclick="setTheme('light',this)">Light</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- VOLUME -->
+      <div class="rsp-section">
+        <div class="rsp-section-title">Volume</div>
+        <div class="rsp-row">
+          <span class="rsp-label">🔊 Voice</span>
+          <input type="range" class="rsp-slider" id="rsp-voice-vol" min="0" max="100" value="100" oninput="setVoiceVolume(this.value); syncVolSliders()">
+          <span class="rsp-val" id="rsp-voice-vol-val">100%</span>
+        </div>
+        <div class="rsp-row">
+          <span class="rsp-label">🎵 Ambient</span>
+          <input type="range" class="rsp-slider" id="rsp-ambient-vol" min="0" max="100" value="40" oninput="setAmbientVolume(this.value); syncVolSliders()">
+          <span class="rsp-val" id="rsp-ambient-vol-val">40%</span>
+        </div>
+      </div>
+
+      <!-- AMBIENT SOUNDS -->
+      <div class="rsp-section">
+        <div class="rsp-section-title">Ambient Sound</div>
+        <div class="rsp-ambient-list" id="rsp-ambient-list"></div>
+        <div class="rsp-add-form">
+          <input type="text" class="rsp-input" id="rsp-ambient-name" placeholder="Name (e.g. Rainy Café)">
+          <input type="text" class="rsp-input" id="rsp-ambient-url" placeholder="YouTube URL">
+          <button class="rsp-add-btn" onclick="rspAddAmbient()">+ Add Sound</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <!-- DOCK -->
 <div class="dock-wrap" id="dock-wrap">
   <button class="dock-toggle" id="dock-toggle" onclick="toggleDock()" title="Collapse/expand controls">
@@ -396,6 +601,7 @@ body.in-library .dock-wrap { transform:translateX(-50%) translateY(100%) !import
     </svg>
   </button>
 <div class="dock" id="dock">
+<div class="dock-inner">
   <button class="dock-btn" onclick="prevSentence()" title="Previous (←)">
     <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><rect x="2" y="3" width="2.5" height="12" rx="1"/><path d="M15 3L7 9L15 15V3Z"/></svg>
   </button>
@@ -417,14 +623,14 @@ body.in-library .dock-wrap { transform:translateX(-50%) translateY(100%) !import
   <div class="dock-divider"></div>
 
   <div class="dock-speed-wrap">
-    <span style="font-size:0.68rem;color:rgba(200,144,42,0.45);text-transform:uppercase;letter-spacing:0.07em">Speed</span>
+    <span style="font-size:0.65rem;color:rgba(200,144,42,0.4);text-transform:uppercase;letter-spacing:0.06em">Spd</span>
     <button class="dock-speed-btn" onclick="changeSpeed(-1)">−</button>
     <span class="speed-label" id="speed-lbl">1×</span>
     <button class="dock-speed-btn" onclick="changeSpeed(1)">+</button>
   </div>
 
   <div class="dock-pitch-wrap">
-    <span style="font-size:0.68rem;color:rgba(200,144,42,0.45);text-transform:uppercase;letter-spacing:0.07em">Pitch</span>
+    <span style="font-size:0.65rem;color:rgba(200,144,42,0.4);text-transform:uppercase;letter-spacing:0.06em">Pitch</span>
     <button class="dock-speed-btn" onclick="changePitch(-1)">−</button>
     <span class="pitch-label" id="pitch-lbl">1.0</span>
     <button class="dock-speed-btn" onclick="changePitch(1)">+</button>
@@ -433,7 +639,6 @@ body.in-library .dock-wrap { transform:translateX(-50%) translateY(100%) !import
   <div class="dock-divider"></div>
 
   <div class="dock-voice-wrap">
-    <div class="dock-voice-label">Voice <button onclick="toggleVoiceGuide()" style="background:none;border:none;color:rgba(200,144,42,0.4);cursor:pointer;font-size:0.72rem;margin-left:2px">?</button></div>
     <select class="voice-select" id="voice-select" onchange="voiceChanged()"></select>
   </div>
 
@@ -450,6 +655,7 @@ body.in-library .dock-wrap { transform:translateX(-50%) translateY(100%) !import
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5.5" cy="5.5" r="4"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5"/></svg>
     Search
   </button>
+</div>
 </div>
 </div>
 
@@ -831,7 +1037,7 @@ async function parseEpub(file) {
     if(!f) continue;
     const html=await f.async('text');
     const doc=parser.parseFromString(html,'text/html');
-    doc.querySelectorAll('script,style,nav').forEach(e=>e.remove());
+    doc.querySelectorAll('script,style,nav,img').forEach(e=>e.remove());
     const text=(doc.body?.textContent||'').trim();
     if(text.length<60) continue;
     const chTitle=doc.querySelector('h1,h2,h3,title')?.textContent?.trim()||`Part ${chapters.length+1}`;
@@ -848,7 +1054,7 @@ async function parseTxt(file){
 async function parseHtml(file){
   const text=await file.text();
   const doc=new DOMParser().parseFromString(text,'text/html');
-  doc.querySelectorAll('script,style').forEach(e=>e.remove());
+  doc.querySelectorAll('script,style,img').forEach(e=>e.remove());
   const title=doc.querySelector('title')?.textContent||file.name;
   return{title,author:'',chapters:[{title,html:doc.body?.innerHTML||text,text:(doc.body?.textContent||text).trim()}]};
 }
@@ -932,7 +1138,7 @@ function loadChapter(ci,si=0){
   sentences=splitSentences(ch.text);
   const content=document.getElementById('reader-content');
   content.innerHTML=ch.html||ch.text;
-  content.querySelectorAll('script,style').forEach(e=>e.remove());
+  content.querySelectorAll('script,style,img').forEach(e=>e.remove());
   updateScrollbar(); updateProgress(); highlightReading(); scrollToReading();
 }
 
@@ -1231,6 +1437,131 @@ document.addEventListener('click',e=>{
   if(ap.classList.contains('show')&&!ap.contains(e.target)&&!ab.contains(e.target)){ ap.classList.remove('show'); ab.classList.remove('active'); }
 });
 
+
+// ═══════════════════════════════════════════
+// READER SETTINGS PANEL
+// ═══════════════════════════════════════════
+const THEMES = {
+  dark:  { bg:'#160f06', text:'#e5dcc5', contentBg:'#160f06' },
+  sepia: { bg:'#f4ecd8', text:'#3a2c1a', contentBg:'#f4ecd8' },
+  light: { bg:'#f8f6f2', text:'#1a1208', contentBg:'#f8f6f2' },
+};
+
+function toggleReaderSettings() {
+  const overlay = document.getElementById('reader-settings-overlay');
+  const btn = document.getElementById('topbar-settings-btn');
+  const show = overlay.classList.toggle('show');
+  btn.classList.toggle('active', show);
+  if (show) renderRspAmbientList();
+}
+function closeReaderSettings() {
+  document.getElementById('reader-settings-overlay').classList.remove('show');
+  document.getElementById('topbar-settings-btn').classList.remove('active');
+}
+
+function setFontSize(val) {
+  document.getElementById('reader-content').style.fontSize = val + 'px';
+  document.getElementById('rsp-fontsize-val').textContent = val + 'px';
+  localStorage.setItem('pl_fontsize', val);
+}
+
+function setLineHeight(val, btn) {
+  document.getElementById('reader-content').style.lineHeight = val;
+  document.querySelectorAll('.rsp-tog-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  localStorage.setItem('pl_lineheight', val);
+}
+
+function setTheme(name, btn) {
+  const t = THEMES[name];
+  if (!t) return;
+  const scroll = document.getElementById('reader-scroll');
+  const content = document.getElementById('reader-content');
+  if (scroll)  scroll.style.background  = t.bg;
+  if (content) content.style.color = t.text;
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  localStorage.setItem('pl_theme', name);
+}
+
+function syncVolSliders() {
+  // Keep settings-page sliders and rsp sliders in sync
+  const vv = Math.round(voiceVol * 100);
+  const av = Math.round(ambientVol * 100);
+  const rspVV = document.getElementById('rsp-voice-vol');
+  const rspAV = document.getElementById('rsp-ambient-vol');
+  if (rspVV) { rspVV.value = vv; document.getElementById('rsp-voice-vol-val').textContent = vv + '%'; }
+  if (rspAV) { rspAV.value = av; document.getElementById('rsp-ambient-vol-val').textContent = av + '%'; }
+  const pgVV = document.getElementById('voice-vol');
+  const pgAV = document.getElementById('ambient-vol');
+  if (pgVV) { pgVV.value = vv; document.getElementById('voice-vol-val').textContent = vv + '%'; }
+  if (pgAV) { pgAV.value = av; document.getElementById('ambient-vol-val').textContent = av + '%'; }
+}
+
+function renderRspAmbientList() {
+  const el = document.getElementById('rsp-ambient-list');
+  if (!el) return;
+  el.innerHTML = '';
+  // Off
+  const off = document.createElement('div');
+  off.className = 'rsp-ambient-opt' + (currentAmbientId === null ? ' active' : '');
+  off.innerHTML = '<span style="font-size:1rem">🔇</span><span class="rsp-ambient-name">Off</span>';
+  off.onclick = () => { selectAmbient(null); renderRspAmbientList(); };
+  el.appendChild(off);
+
+  ambientSounds.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'rsp-ambient-opt' + (currentAmbientId === s.id ? ' active' : '');
+    row.innerHTML = `<span style="font-size:1rem">♪</span><span class="rsp-ambient-name">${s.name}</span><button onclick="event.stopPropagation();removeAmbientSound('${s.id}')" style="background:none;border:none;color:rgba(200,80,80,0.5);cursor:pointer;font-size:0.85rem;padding:0 2px" title="Remove">✕</button>`;
+    row.addEventListener('click', () => { selectAmbient(s.id); renderRspAmbientList(); });
+    el.appendChild(row);
+  });
+  if (!ambientSounds.length) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'font-size:0.82rem;color:rgba(200,144,42,0.3);font-style:italic;padding:6px 0';
+    empty.textContent = 'No sounds added yet';
+    el.appendChild(empty);
+  }
+}
+
+function rspAddAmbient() {
+  const name = document.getElementById('rsp-ambient-name').value.trim();
+  const url  = document.getElementById('rsp-ambient-url').value.trim();
+  if (!name) { toast('Please enter a name'); return; }
+  if (!url)  { toast('Please enter a YouTube URL'); return; }
+  const vid = extractVideoId(url);
+  if (!vid)  { toast('Could not find a video ID in that URL'); return; }
+  const sound = { id:'s_'+Date.now(), name, url, videoId:vid };
+  ambientSounds.push(sound);
+  saveAmbientSounds();
+  renderAmbientList();
+  renderAmbientPopup();
+  renderRspAmbientList();
+  document.getElementById('rsp-ambient-name').value = '';
+  document.getElementById('rsp-ambient-url').value  = '';
+  toast(`"${name}" added`);
+}
+
+function restoreAppearancePrefs() {
+  const fs = localStorage.getItem('pl_fontsize')    || '18';
+  const lh = localStorage.getItem('pl_lineheight')  || '1.9';
+  const th = localStorage.getItem('pl_theme')       || 'dark';
+  document.getElementById('rsp-fontsize').value = fs;
+  document.getElementById('rsp-fontsize-val').textContent = fs + 'px';
+  if (document.getElementById('reader-content')) {
+    document.getElementById('reader-content').style.fontSize   = fs + 'px';
+    document.getElementById('reader-content').style.lineHeight = lh;
+  }
+  // Set active line height button
+  const lhMap = {'1.5':'Tight','1.9':'Normal','2.4':'Loose'};
+  document.querySelectorAll('.rsp-tog-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent === (lhMap[lh]||'Normal'));
+  });
+  // Set theme
+  const thBtn = document.querySelector(`.theme-btn.theme-${th}`);
+  if (thBtn) setTheme(th, thBtn);
+}
+
 function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.toggle('show'); }
 
 // ═══════════════════════════════════════════
@@ -1276,6 +1607,8 @@ async function init(){
   restoreVolPrefs();
   loadYTApi();
   setTimeout(loadVoices,300);
+  restoreAppearancePrefs();
+  syncVolSliders();
 }
 init();
 </script>
