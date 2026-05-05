@@ -110,17 +110,11 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 /* READER BODY */
 .reader-body { flex:1; display:flex; overflow:hidden; position:relative; }
 .page-wrap { flex:1; position:relative; overflow:hidden; display:flex; align-items:stretch; }
-.page-arrow { position:absolute; top:0; bottom:0; width:140px; display:flex; align-items:center; justify-content:center; opacity:1; transition:opacity 0.2s; cursor:pointer; z-index:50; pointer-events:all; }
-.page-arrow.left { left:0; background:linear-gradient(90deg,rgba(8,4,0,0.82) 0%,rgba(8,4,0,0.45) 55%,transparent 100%); }
-.page-arrow.right { right:0; background:linear-gradient(270deg,rgba(8,4,0,0.82) 0%,rgba(8,4,0,0.45) 55%,transparent 100%); }
+.page-arrow { position:absolute; top:0; bottom:0; width:300px; display:flex; align-items:center; justify-content:center; opacity:1; transition:opacity 0.2s; cursor:pointer; z-index:50; pointer-events:all; }
+.page-arrow.left { left:0; background:linear-gradient(90deg,rgba(8,4,0,0.88) 0%,rgba(8,4,0,0.55) 40%,rgba(8,4,0,0.15) 75%,transparent 100%); }
+.page-arrow.right { right:0; background:linear-gradient(270deg,rgba(8,4,0,0.88) 0%,rgba(8,4,0,0.55) 40%,rgba(8,4,0,0.15) 75%,transparent 100%); }
 .page-arrow svg { color:rgba(200,144,42,0.0); transition:color 0.2s,transform 0.15s; }
 .page-arrow:hover svg { color:rgba(200,144,42,0.85); transform:scale(1.15); }
-/* Top and bottom vignette bars to fully box the page */
-.page-wrap::before, .page-wrap::after {
-  content:''; position:absolute; left:0; right:0; height:80px; z-index:45; pointer-events:none;
-}
-.page-wrap::before { top:0; background:linear-gradient(180deg,rgba(8,4,0,0.75) 0%,transparent 100%); }
-.page-wrap::after  { bottom:0; background:linear-gradient(0deg,rgba(8,4,0,0.75) 0%,transparent 100%); }
 .reader-scroll { flex:1; overflow-y:scroll; padding:52px 100px 100px; scroll-behavior:smooth; position:relative; }
 .reader-scroll::-webkit-scrollbar { display:none; }
 .reader-scroll { -ms-overflow-style:none; scrollbar-width:none; }
@@ -397,6 +391,40 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
   background: rgba(200,144,42,0.08);
 }
 
+
+/* BRIGHTNESS DIMMER */
+.brightness-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0);
+  pointer-events: none;
+  z-index: 350;
+  transition: background 0.2s;
+}
+.dock-bright-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  flex-shrink: 0;
+}
+.dock-bright-label {
+  font-size: 0.65rem; color: rgba(200,144,42,0.45);
+  text-transform: uppercase; letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+.bright-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 80px; height: 3px;
+  background: rgba(200,144,42,0.15);
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+.bright-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 13px; height: 13px;
+  border-radius: 50%; background: var(--amber);
+  border: 2px solid var(--amber-dark); cursor: pointer;
+}
+.bright-slider::-moz-range-thumb {
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--amber); border: 2px solid var(--amber-dark); cursor: pointer;
+}
+
 @media(max-width:680px){
   .reader-scroll{padding:36px 56px}
   .dock-voice-wrap,.dock-pitch-wrap{display:none}
@@ -607,11 +635,13 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
   </div>
 </div>
 
+<div class="brightness-overlay" id="brightness-overlay"></div>
+
 <!-- DOCK -->
 <div class="dock-wrap" id="dock-wrap">
   <button class="dock-toggle" id="dock-toggle" onclick="toggleDock()" title="Collapse/expand controls">
     <svg width="14" height="8" viewBox="0 0 14 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-      <path d="M1 6.5L7 1.5L13 6.5"/>
+      <path d="M1 1.5L7 6.5L13 1.5"/>
     </svg>
   </button>
 <div class="dock" id="dock">
@@ -664,6 +694,13 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
   </button>
 
   <button class="zzz-btn" id="zzz-btn" onclick="handleZzz()" title="Save sleep position">💤</button>
+
+  <div class="dock-divider"></div>
+
+  <div class="dock-bright-wrap">
+    <span class="dock-bright-label">☀ Brightness</span>
+    <input type="range" class="bright-slider" id="bright-slider" min="0" max="90" value="0" oninput="setBrightness(this.value)">
+  </div>
 
   <button class="dock-icon-btn" id="search-btn" onclick="toggleSearch()">
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5.5" cy="5.5" r="4"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5"/></svg>
@@ -1737,6 +1774,22 @@ function restoreAppearancePrefs() {
   if (thBtn) setTheme(th, thBtn);
 }
 
+
+// ═══════════════════════════════════════════
+// BRIGHTNESS DIMMER
+// ═══════════════════════════════════════════
+function setBrightness(val) {
+  const opacity = val / 100;
+  document.getElementById('brightness-overlay').style.background = `rgba(0,0,0,${opacity})`;
+  localStorage.setItem('pl_brightness', val);
+}
+
+function restoreBrightness() {
+  const val = localStorage.getItem('pl_brightness') || '0';
+  document.getElementById('bright-slider').value = val;
+  setBrightness(val);
+}
+
 function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.toggle('show'); }
 
 // ═══════════════════════════════════════════
@@ -1784,6 +1837,7 @@ async function init(){
   setTimeout(loadVoices,300);
   restoreAppearancePrefs();
   syncVolSliders();
+  restoreBrightness();
 }
 init();
 </script>
