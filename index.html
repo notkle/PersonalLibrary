@@ -913,11 +913,7 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
     <button class="ai-window-close" onclick="closeAiWindow()">✕</button>
   </div>
   <div class="ai-window-body">
-    <div class="ai-apikey-row" id="ai-apikey-row">
-      <input type="password" id="ai-apikey-input" placeholder="Paste Gemini API key…">
-      <button class="ai-apikey-save" onclick="saveApiKey()">Save</button>
-    </div>
-    <div class="ai-apikey-hint" id="ai-apikey-hint">Get a free key at aistudio.google.com — stored locally only</div>
+
     <div class="ai-mode-label" id="ai-mode-label">YOUR REQUEST</div>
     <textarea class="ai-textarea" id="ai-textarea" placeholder="Ask anything about the book…" rows="3"></textarea>
     <button class="ai-send-btn" id="ai-send-btn" onclick="sendAiRequest()">Ask Gemini →</button>
@@ -2011,33 +2007,9 @@ function restoreBrightness() {
 // ═══════════════════════════════════════════
 const WORKER_URL = 'https://personallibrary-proxy.sotempyhehe.workers.dev';
 let aiMode = 'request'; // 'chapter' or 'request'
-let geminiApiKey = '';
 
-function loadApiKey() {
-  geminiApiKey = localStorage.getItem('pl_gemini_key') || '';
-  if (geminiApiKey) {
-    document.getElementById('ai-apikey-input').value = '••••••••••••••••';
-    document.getElementById('ai-apikey-row').style.opacity = '0.5';
-    document.getElementById('ai-apikey-hint').textContent = 'API key saved locally ✓  Click to change';
-  }
-}
 
-function saveApiKey() {
-  const val = document.getElementById('ai-apikey-input').value.trim();
-  if (!val || val.startsWith('•')) return;
-  geminiApiKey = val;
-  localStorage.setItem('pl_gemini_key', val);
-  document.getElementById('ai-apikey-input').value = '••••••••••••••••';
-  document.getElementById('ai-apikey-row').style.opacity = '0.5';
-  document.getElementById('ai-apikey-hint').textContent = 'API key saved locally ✓  Click to change';
-  toast('API key saved');
-}
 
-document.getElementById('ai-apikey-row').addEventListener('click', () => {
-  const inp = document.getElementById('ai-apikey-input');
-  inp.value = '';
-  document.getElementById('ai-apikey-row').style.opacity = '1';
-});
 
 function toggleSummaryChoice() {
   const panel = document.getElementById('summary-choice');
@@ -2090,7 +2062,6 @@ function closeAiWindow() {
 }
 
 async function sendAiRequest() {
-  if (!geminiApiKey) { toast('Please enter your Gemini API key first'); return; }
   if (!book) { toast('No book open'); return; }
 
   const btn  = document.getElementById('ai-send-btn');
@@ -2113,7 +2084,7 @@ async function sendAiRequest() {
     const response = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: userPrompt, apiKey: geminiApiKey })
+      body: JSON.stringify({ prompt: userPrompt })
     });
 
     if (!response.ok) {
@@ -2224,7 +2195,6 @@ async function init(){
   restoreAppearancePrefs();
   syncVolSliders();
   restoreBrightness();
-  loadApiKey();
 }
 init();
 </script>
