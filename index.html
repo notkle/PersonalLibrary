@@ -430,8 +430,6 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
 /* ── SUMMARY PANEL (choice window) ── */
 .summary-choice {
   position: fixed;
-  bottom: 76px; left: 50%;
-  transform: translateX(-50%) translateY(10px);
   width: 280px;
   background: rgba(14,9,2,0.97);
   border: 1px solid rgba(200,144,42,0.28);
@@ -442,10 +440,11 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
   z-index: 500;
   opacity: 0; pointer-events: none;
   transition: opacity 0.2s, transform 0.2s;
+  transform: translateY(6px);
 }
 .summary-choice.show {
   opacity: 1; pointer-events: all;
-  transform: translateX(-50%) translateY(0);
+  transform: translateY(0);
 }
 .summary-choice-title {
   font-family: 'Playfair Display', serif;
@@ -2015,7 +2014,20 @@ let aiMode = 'request'; // 'chapter' or 'request'
 function toggleSummaryChoice() {
   const panel = document.getElementById('summary-choice');
   const btn   = document.getElementById('summary-btn');
-  const show  = panel.classList.toggle('show');
+  const show  = !panel.classList.contains('show');
+
+  if (show) {
+    // Position above the summary button, centered on it
+    const rect = btn.getBoundingClientRect();
+    const panelW = 280;
+    let left = rect.left + rect.width / 2 - panelW / 2;
+    // Clamp to viewport
+    left = Math.max(8, Math.min(left, window.innerWidth - panelW - 8));
+    panel.style.left   = left + 'px';
+    panel.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+  }
+
+  panel.classList.toggle('show', show);
   btn.classList.toggle('active', show);
 }
 
@@ -2061,6 +2073,14 @@ function openAiWindow(mode) {
 function closeAiWindow() {
   document.getElementById('ai-window').classList.remove('show');
 }
+
+// Enter to send (Shift+Enter for newline)
+document.getElementById('ai-textarea').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendAiRequest();
+  }
+});
 
 async function sendAiRequest() {
   if (!book) { toast('No book open'); return; }
