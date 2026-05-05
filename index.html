@@ -5,689 +5,671 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PersonalLibrary</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --ink: #1a1208;
-    --paper: #f5f0e8;
-    --paper-dark: #ede6d3;
-    --paper-darker: #d9cdb3;
-    --amber: #c8902a;
-    --amber-light: #e8b84b;
-    --amber-dark: #8a5f0d;
-    --shelf: #6b4423;
-    --shelf-dark: #4a2d12;
-    --spine-shadow: rgba(0,0,0,0.35);
-    --red-accent: #8b2020;
-    --green-accent: #1a4a2a;
-    --blue-accent: #1a2a4a;
-    --teal-accent: #1a3a3a;
-    --radius: 3px;
-  }
+:root {
+  --ink: #1a1208;
+  --paper: #f0e8d5;
+  --paper-mid: #ddd0b0;
+  --paper-dark: #c4b48a;
+  --amber: #c8902a;
+  --amber-light: #e8b84b;
+  --amber-dark: #8a5f0d;
+  --shelf: #6b4423;
+  --shelf-dark: #4a2d12;
+  --bg: #120d06;
+  --surface: #1c140a;
+  --surface2: #241a0e;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: 'Crimson Pro', Georgia, serif;
-    background: var(--ink);
-    color: var(--paper);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+html, body { height: 100%; overflow: hidden; }
 
-  /* ─── GRAIN OVERLAY ─── */
-  body::before {
-    content: '';
-    position: fixed; inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none; z-index: 9999; opacity: 0.4;
-  }
+body {
+  font-family: 'Crimson Pro', Georgia, serif;
+  background: var(--bg);
+  color: var(--paper);
+  height: 100vh;
+  overflow: hidden;
+}
 
-  /* ─── HEADER ─── */
-  header {
-    background: linear-gradient(180deg, #0d0900 0%, #1a1208 100%);
-    border-bottom: 2px solid var(--amber-dark);
-    padding: 18px 40px;
-    display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 100;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-  }
+/* ── GRAIN ── */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9000; opacity: 0.5;
+}
 
-  .logo {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.6rem;
-    color: var(--amber-light);
-    letter-spacing: 0.04em;
-    display: flex; align-items: center; gap: 10px;
-  }
-  .logo svg { opacity: 0.85; }
+/* ══════════════════════════════
+   HEADER
+══════════════════════════════ */
+header {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: 56px;
+  background: linear-gradient(180deg, #0a0600 0%, #120d06 100%);
+  border-bottom: 1px solid rgba(200,144,42,0.2);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.5);
+}
 
-  .header-actions { display: flex; gap: 12px; align-items: center; }
+.logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.35rem;
+  color: var(--amber-light);
+  letter-spacing: 0.05em;
+  display: flex; align-items: center; gap: 9px;
+}
 
-  .btn {
-    font-family: 'Crimson Pro', serif;
-    font-size: 0.95rem;
-    font-weight: 500;
-    padding: 8px 18px;
-    border-radius: var(--radius);
-    border: 1.5px solid;
-    cursor: pointer;
-    transition: all 0.2s;
-    letter-spacing: 0.03em;
-  }
-  .btn-primary {
-    background: var(--amber);
-    border-color: var(--amber-dark);
-    color: var(--ink);
-  }
-  .btn-primary:hover { background: var(--amber-light); }
-  .btn-ghost {
-    background: transparent;
-    border-color: rgba(200,144,42,0.35);
-    color: var(--amber-light);
-  }
-  .btn-ghost:hover { border-color: var(--amber); background: rgba(200,144,42,0.1); }
+.header-right { display: flex; gap: 10px; align-items: center; }
 
-  /* ─── MAIN VIEWS ─── */
-  .view { display: none; }
-  .view.active { display: block; }
+.btn {
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.92rem;
+  padding: 7px 16px;
+  border-radius: 3px;
+  border: 1.5px solid;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.btn-primary { background: var(--amber); border-color: var(--amber-dark); color: var(--ink); font-weight: 600; }
+.btn-primary:hover { background: var(--amber-light); }
+.btn-ghost { background: transparent; border-color: rgba(200,144,42,0.3); color: var(--amber-light); }
+.btn-ghost:hover { border-color: var(--amber); background: rgba(200,144,42,0.08); }
 
-  /* ─── LIBRARY VIEW ─── */
-  #library-view {
-    padding: 48px 40px;
-    min-height: calc(100vh - 70px);
-  }
+/* ══════════════════════════════
+   VIEWS
+══════════════════════════════ */
+.view { display: none; position: fixed; inset: 0; top: 56px; }
+.view.active { display: block; }
 
-  .library-header {
-    display: flex; justify-content: space-between; align-items: flex-end;
-    margin-bottom: 40px;
-    border-bottom: 1px solid rgba(200,144,42,0.2);
-    padding-bottom: 20px;
-  }
+/* ══════════════════════════════
+   LIBRARY VIEW
+══════════════════════════════ */
+#library-view {
+  overflow-y: auto;
+  padding: 36px 36px 60px;
+  background: var(--bg);
+}
 
-  .library-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.2rem;
-    color: var(--paper);
-    font-weight: 400;
-    letter-spacing: 0.02em;
-  }
-  .library-title span {
-    font-style: italic;
-    color: var(--amber-light);
-  }
-  .library-count {
-    font-size: 0.9rem;
-    color: var(--paper-darker);
-    font-style: italic;
-    margin-top: 4px;
-  }
+.lib-heading {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.9rem;
+  color: var(--paper);
+  font-weight: 400;
+  margin-bottom: 4px;
+}
+.lib-heading em { color: var(--amber-light); font-style: italic; }
+.lib-sub { font-size: 0.88rem; color: var(--paper-dark); font-style: italic; margin-bottom: 32px; }
 
-  /* ─── BOOKSHELF ─── */
-  .shelf-container {
-    background: linear-gradient(180deg, #2a1a0a 0%, #3d2010 40%, #4a2d12 100%);
-    border-radius: 6px;
-    padding: 24px 28px 0;
-    box-shadow: inset 0 -6px 20px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.5);
-    margin-bottom: 40px;
-    border: 1px solid rgba(107,68,35,0.6);
-    position: relative;
-  }
+/* Shelf */
+.shelf-wrap {
+  background: linear-gradient(180deg, #1e1005 0%, #2e1a08 60%, #3d2010 100%);
+  border-radius: 5px;
+  padding: 20px 24px 0;
+  border: 1px solid rgba(107,68,35,0.5);
+  box-shadow: inset 0 -4px 16px rgba(0,0,0,0.4), 0 6px 28px rgba(0,0,0,0.5);
+  margin-bottom: 32px;
+}
 
-  .books-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 6px;
-    flex-wrap: wrap;
-    min-height: 180px;
-    padding-bottom: 0;
-  }
+.books-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  min-height: 170px;
+  flex-wrap: wrap;
+}
 
-  /* The shelf plank */
-  .shelf-plank {
-    height: 22px;
-    background: linear-gradient(180deg, var(--shelf) 0%, var(--shelf-dark) 60%, #2a1000 100%);
-    margin: 0 -28px;
-    border-top: 2px solid #8b6040;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-    position: relative;
-  }
-  .shelf-plank::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, transparent, rgba(255,220,150,0.15), transparent);
-  }
+.shelf-plank {
+  height: 18px;
+  margin: 0 -24px;
+  background: linear-gradient(180deg, #7a5030 0%, #5a3418 60%, #2a1000 100%);
+  border-top: 2px solid #9a7050;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.7);
+}
 
-  /* ─── BOOK SPINE ─── */
-  .book-spine {
-    width: 44px;
-    height: 160px;
-    border-radius: 2px 0 0 2px;
-    cursor: pointer;
-    position: relative;
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s;
-    flex-shrink: 0;
-    transform-origin: bottom center;
-    box-shadow: 3px 0 8px var(--spine-shadow), inset -3px 0 6px rgba(0,0,0,0.3);
-    display: flex; flex-direction: column;
-    overflow: hidden;
-  }
-  .book-spine:hover {
-    transform: translateY(-16px) scale(1.04);
-    box-shadow: 6px 0 20px rgba(0,0,0,0.5), inset -3px 0 6px rgba(0,0,0,0.2);
-    z-index: 10;
-  }
+/* Book Spine */
+.book-spine {
+  width: 42px;
+  height: 155px;
+  border-radius: 2px 0 0 2px;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s;
+  transform-origin: bottom center;
+  box-shadow: 3px 0 8px rgba(0,0,0,0.5), inset -3px 0 5px rgba(0,0,0,0.35);
+  flex-shrink: 0;
+  overflow: hidden;
+  user-select: none;
+}
+.book-spine:hover {
+  transform: translateY(-18px) scale(1.05);
+  box-shadow: 5px 0 18px rgba(0,0,0,0.6), inset -2px 0 4px rgba(0,0,0,0.2);
+  z-index: 10;
+}
+.book-spine-inner {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  justify-content: space-between;
+  padding: 10px 5px;
+  position: relative; z-index: 1;
+}
+.spine-title {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: 'Playfair Display', serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  overflow: hidden;
+  max-height: 108px;
+}
+.spine-author {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.52rem;
+  opacity: 0.7;
+  font-style: italic;
+  overflow: hidden;
+  max-height: 48px;
+}
+.spine-line {
+  width: 26px; height: 1px;
+  background: rgba(255,255,255,0.2);
+  margin: 3px auto;
+}
+.spine-progress {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px; background: rgba(0,0,0,0.3);
+}
+.spine-progress-fill {
+  height: 100%; background: rgba(255,255,255,0.45);
+  transition: width 0.4s;
+}
 
-  .book-spine-inner {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 10px 6px;
-    position: relative;
-  }
+/* Book colors */
+.bc0 { background: linear-gradient(160deg,#6b1818,#8b2222,#4a0f0f); color:#ffd8d8; }
+.bc1 { background: linear-gradient(160deg,#183860,#1e4878,#0f2440); color:#c5dfff; }
+.bc2 { background: linear-gradient(160deg,#184818,#1e5a1e,#0f300f); color:#bdffc0; }
+.bc3 { background: linear-gradient(160deg,#483818,#5a4818,#302810); color:#ffe8aa; }
+.bc4 { background: linear-gradient(160deg,#381848,#481e60,#280f38); color:#e5bfff; }
+.bc5 { background: linear-gradient(160deg,#184848,#1e5a5a,#0f3030); color:#aaf0f0; }
+.bc6 { background: linear-gradient(160deg,#481828,#601e38,#300f1e); color:#ffbfd5; }
+.bc7 { background: linear-gradient(160deg,#283818,#324818,#1a2c10); color:#d5ffaa; }
+.bc8 { background: linear-gradient(160deg,#483018,#5a3c1e,#302010); color:#ffd5aa; }
+.bc9 { background: linear-gradient(160deg,#183040,#1e3c52,#0f2030); color:#aaccff; }
 
-  .spine-title {
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    transform: rotate(180deg);
-    font-family: 'Playfair Display', serif;
-    font-size: 0.7rem;
-    line-height: 1.2;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    overflow: hidden;
-    max-height: 110px;
-    text-overflow: ellipsis;
-  }
+/* Empty shelf */
+.empty-shelf {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; width: 100%; padding: 50px 0 20px;
+  color: rgba(200,144,42,0.3); font-style: italic; gap: 10px;
+  font-size: 1rem;
+}
 
-  .spine-author {
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    transform: rotate(180deg);
-    font-size: 0.55rem;
-    opacity: 0.75;
-    font-style: italic;
-    letter-spacing: 0.04em;
-    overflow: hidden;
-    max-height: 50px;
-  }
+/* Upload zone */
+.upload-zone {
+  border: 2px dashed rgba(200,144,42,0.25);
+  border-radius: 6px;
+  padding: 44px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  background: rgba(200,144,42,0.02);
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--amber);
+  background: rgba(200,144,42,0.06);
+}
+.upload-zone h3 { font-family:'Playfair Display',serif; font-size:1.2rem; color:var(--amber-light); font-weight:400; margin-bottom:6px; }
+.upload-zone p { color: var(--paper-dark); font-size: 0.9rem; }
+.upload-formats { margin-top:10px; font-size:0.78rem; color:rgba(200,144,42,0.4); letter-spacing:0.1em; text-transform:uppercase; }
+#file-input { display: none; }
 
-  .spine-ornament {
-    width: 28px;
-    height: 2px;
-    background: rgba(255,255,255,0.25);
-    margin: 4px auto;
-    border-radius: 1px;
-  }
+/* ══════════════════════════════
+   READER VIEW
+══════════════════════════════ */
+#reader-view {
+  display: none;
+  position: fixed; inset: 0; top: 56px;
+  overflow: hidden;
+}
+#reader-view.active { display: flex; flex-direction: column; }
 
-  .book-progress-bar {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 3px;
-    background: rgba(0,0,0,0.3);
-  }
-  .book-progress-fill {
-    height: 100%;
-    background: rgba(255,255,255,0.5);
-    transition: width 0.3s;
-  }
+/* Reader topbar */
+.reader-topbar {
+  flex-shrink: 0;
+  height: 44px;
+  background: #0d0900;
+  border-bottom: 1px solid rgba(200,144,42,0.15);
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 20px;
+}
+.reader-book-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.95rem;
+  color: var(--amber-light);
+  font-style: italic;
+  flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.chapter-select {
+  background: rgba(200,144,42,0.08);
+  border: 1px solid rgba(200,144,42,0.25);
+  color: var(--paper);
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.88rem;
+  padding: 4px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  max-width: 200px;
+}
 
-  .book-cover-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    position: absolute; inset: 0;
-    opacity: 0.3;
-  }
+/* Reader body */
+.reader-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
 
-  /* Book color palettes */
-  .book-color-0 { background: linear-gradient(180deg, #6b1a1a 0%, #8b2020 50%, #5a1010 100%); color: #ffd9d9; }
-  .book-color-1 { background: linear-gradient(180deg, #1a3a5c 0%, #1e4976 50%, #0f2840 100%); color: #c8e0ff; }
-  .book-color-2 { background: linear-gradient(180deg, #1a4a1a 0%, #215421 50%, #0f300f 100%); color: #c0ffb8; }
-  .book-color-3 { background: linear-gradient(180deg, #4a3a1a 0%, #5c4820 50%, #332810 100%); color: #ffe8b0; }
-  .book-color-4 { background: linear-gradient(180deg, #3a1a4a 0%, #4a2060 50%, #280f38 100%); color: #e8c0ff; }
-  .book-color-5 { background: linear-gradient(180deg, #1a4a4a 0%, #205c5c 50%, #0f3030 100%); color: #b0f0f0; }
-  .book-color-6 { background: linear-gradient(180deg, #4a1a2a 0%, #5c2038 50%, #300f1e 100%); color: #ffc0d8; }
-  .book-color-7 { background: linear-gradient(180deg, #2a3a1a 0%, #384c20 50%, #1c2c10 100%); color: #d8ffb0; }
+/* ── PAGE CONTENT ── */
+.page-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+}
 
-  /* ─── EMPTY STATE ─── */
-  .empty-shelf {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 60px 20px;
-    color: rgba(200,144,42,0.4);
-    font-style: italic;
-    gap: 12px;
-    font-size: 1.1rem;
-  }
-  .empty-shelf svg { opacity: 0.3; }
+/* Page turn zones */
+.page-arrow {
+  position: absolute; top: 0; bottom: 0;
+  width: 80px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  cursor: pointer;
+  z-index: 50;
+  pointer-events: none;
+}
+.page-arrow.left { left: 0; background: linear-gradient(90deg, rgba(10,6,0,0.6) 0%, transparent 100%); }
+.page-arrow.right { right: 0; background: linear-gradient(270deg, rgba(10,6,0,0.6) 0%, transparent 100%); }
+.page-wrap:hover .page-arrow { opacity: 1; pointer-events: all; }
+.page-arrow svg { color: rgba(200,144,42,0.7); transition: color 0.15s, transform 0.15s; }
+.page-arrow:hover svg { color: var(--amber-light); transform: scale(1.15); }
 
-  /* ─── UPLOAD ZONE ─── */
-  .upload-zone {
-    border: 2px dashed rgba(200,144,42,0.3);
-    border-radius: 8px;
-    padding: 48px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s;
-    margin-top: 24px;
-    background: rgba(200,144,42,0.03);
-  }
-  .upload-zone:hover, .upload-zone.drag-over {
-    border-color: var(--amber);
-    background: rgba(200,144,42,0.07);
-  }
-  .upload-zone h3 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.3rem;
-    color: var(--amber-light);
-    margin-bottom: 8px;
-    font-weight: 400;
-  }
-  .upload-zone p { color: var(--paper-darker); font-size: 0.95rem; }
-  .upload-formats {
-    margin-top: 12px;
-    font-size: 0.82rem;
-    color: rgba(200,144,42,0.5);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  #file-input { display: none; }
+/* Text scroll area */
+.reader-scroll {
+  flex: 1;
+  overflow-y: scroll;
+  padding: 52px 100px;
+  scroll-behavior: smooth;
+  position: relative;
+}
 
-  /* ─── READER VIEW ─── */
-  #reader-view {
-    display: none;
-    flex-direction: column;
-    height: 100vh;
-  }
-  #reader-view.active { display: flex; }
+/* Hide default scrollbar — we build our own */
+.reader-scroll::-webkit-scrollbar { display: none; }
+.reader-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 
-  .reader-topbar {
-    background: #0d0900;
-    border-bottom: 1px solid var(--amber-dark);
-    padding: 12px 28px;
-    display: flex; align-items: center; gap: 16px;
-    flex-shrink: 0;
-  }
+/* Custom scrollbar track on right edge */
+.custom-scrollbar {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 6px;
+  z-index: 40;
+  pointer-events: none;
+}
+.custom-scrollbar-thumb {
+  position: absolute;
+  right: 1px;
+  width: 4px;
+  min-height: 40px;
+  background: rgba(200,144,42,0.3);
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+.page-wrap:hover .custom-scrollbar-thumb { background: rgba(200,144,42,0.55); }
 
-  .reader-book-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1rem;
-    color: var(--amber-light);
-    font-style: italic;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+/* Reading text */
+.reader-content {
+  max-width: 660px;
+  margin: 0 auto;
+  font-size: 1.18rem;
+  line-height: 1.9;
+  color: #e5dcc5;
+  font-weight: 300;
+}
+.reader-content p { margin-bottom: 1.15em; }
+.reader-content h1, .reader-content h2, .reader-content h3 {
+  font-family: 'Playfair Display', serif;
+  color: var(--paper); margin: 1.6em 0 0.5em;
+  font-weight: 400; line-height: 1.3;
+}
+.reader-content h1 { font-size: 1.7rem; }
+.reader-content h2 { font-size: 1.35rem; }
 
-  .reader-chapter-select {
-    background: rgba(200,144,42,0.1);
-    border: 1px solid rgba(200,144,42,0.3);
-    color: var(--paper);
-    font-family: 'Crimson Pro', serif;
-    font-size: 0.9rem;
-    padding: 5px 10px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    max-width: 220px;
-  }
+.highlight-reading {
+  background: rgba(200,144,42,0.18);
+  border-radius: 2px;
+  outline: 1px solid rgba(200,144,42,0.15);
+}
+.highlight-search-match {
+  background: rgba(200,144,42,0.12);
+  border-radius: 2px;
+}
+.highlight-search-match.active {
+  background: rgba(200,144,42,0.38);
+  outline: 1px solid var(--amber);
+}
 
-  /* ─── READER LAYOUT ─── */
-  .reader-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
+/* ── SEARCH PANEL ── */
+.search-panel {
+  width: 0;
+  overflow: hidden;
+  transition: width 0.28s cubic-bezier(0.4,0,0.2,1);
+  background: #0e0a05;
+  border-left: 1px solid rgba(200,144,42,0.12);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+}
+.search-panel.open { width: 300px; }
 
-  /* ─── SEARCH PANEL ─── */
-  .search-panel {
-    width: 320px;
-    flex-shrink: 0;
-    background: #110e07;
-    border-right: 1px solid rgba(200,144,42,0.15);
-    display: flex; flex-direction: column;
-    overflow: hidden;
-    transition: width 0.3s;
-  }
-  .search-panel.collapsed { width: 0; }
+.search-inner { width: 300px; display: flex; flex-direction: column; height: 100%; }
+.search-top { padding: 14px 14px 10px; border-bottom: 1px solid rgba(200,144,42,0.1); flex-shrink: 0; }
 
-  .search-header {
-    padding: 16px 18px 12px;
-    border-bottom: 1px solid rgba(200,144,42,0.12);
-    flex-shrink: 0;
-  }
+.search-box {
+  position: relative;
+}
+.search-input {
+  width: 100%;
+  background: rgba(200,144,42,0.07);
+  border: 1px solid rgba(200,144,42,0.22);
+  color: var(--paper);
+  font-family: 'Crimson Pro', serif;
+  font-size: 1rem;
+  padding: 8px 32px 8px 11px;
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.18s;
+}
+.search-input:focus { border-color: var(--amber); }
+.search-input::placeholder { color: rgba(200,144,42,0.3); font-style: italic; }
+.search-x {
+  position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: rgba(200,144,42,0.35);
+  cursor: pointer; font-size: 0.85rem; display: none; line-height: 1;
+}
+.search-x.show { display: block; }
+.search-meta { font-size: 0.75rem; color: var(--paper-dark); font-style: italic; margin-top: 7px; min-height: 14px; }
 
-  .search-input-wrap {
-    position: relative;
-  }
-  .search-input {
-    width: 100%;
-    background: rgba(200,144,42,0.08);
-    border: 1px solid rgba(200,144,42,0.25);
-    color: var(--paper);
-    font-family: 'Crimson Pro', serif;
-    font-size: 1rem;
-    padding: 9px 36px 9px 12px;
-    border-radius: var(--radius);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .search-input:focus { border-color: var(--amber); }
-  .search-input::placeholder { color: rgba(200,144,42,0.35); font-style: italic; }
+.search-list { flex: 1; overflow-y: auto; }
+.search-list::-webkit-scrollbar { width: 3px; }
+.search-list::-webkit-scrollbar-thumb { background: rgba(200,144,42,0.2); border-radius: 2px; }
 
-  .search-clear {
-    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-    background: none; border: none; color: rgba(200,144,42,0.4);
-    cursor: pointer; font-size: 1rem; display: none;
-  }
-  .search-clear.visible { display: block; }
+.search-item {
+  padding: 11px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(200,144,42,0.06);
+  transition: background 0.13s;
+}
+.search-item:hover { background: rgba(200,144,42,0.07); }
+.search-item.active { background: rgba(200,144,42,0.11); border-left: 3px solid var(--amber); padding-left: 11px; }
+.si-chapter { font-size: 0.7rem; color: var(--amber); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+.si-snippet { font-size: 0.86rem; color: var(--paper-dark); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.si-snippet mark { background: rgba(200,144,42,0.3); color: var(--amber-light); border-radius: 1px; padding: 0 1px; font-style: normal; }
 
-  .search-count {
-    font-size: 0.78rem;
-    color: var(--paper-darker);
-    margin-top: 8px;
-    font-style: italic;
-    min-height: 16px;
-  }
+/* ══════════════════════════════
+   BOTTOM DOCK
+══════════════════════════════ */
+.dock-trigger {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  z-index: 300;
+  pointer-events: none;
+}
+/* Invisible hover zone at very bottom */
+.dock-trigger::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  pointer-events: all;
+}
 
-  .search-results {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px 0;
-  }
-  .search-results::-webkit-scrollbar { width: 4px; }
-  .search-results::-webkit-scrollbar-track { background: transparent; }
-  .search-results::-webkit-scrollbar-thumb { background: rgba(200,144,42,0.2); border-radius: 2px; }
+.dock {
+  position: fixed;
+  bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
+  width: min(780px, 96vw);
+  background: rgba(12, 8, 2, 0.97);
+  border: 1px solid rgba(200,144,42,0.25);
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  padding: 14px 20px 16px;
+  display: flex; align-items: center; gap: 16px;
+  box-shadow: 0 -4px 32px rgba(0,0,0,0.6);
+  transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  z-index: 400;
+  backdrop-filter: blur(12px);
+}
+.dock.visible { transform: translateX(-50%) translateY(0); }
 
-  .search-result-item {
-    padding: 12px 18px;
-    cursor: pointer;
-    border-bottom: 1px solid rgba(200,144,42,0.07);
-    transition: background 0.15s;
-  }
-  .search-result-item:hover { background: rgba(200,144,42,0.07); }
-  .search-result-item.active { background: rgba(200,144,42,0.12); border-left: 3px solid var(--amber); }
+/* dock always visible in library */
+body.in-library .dock { transform: translateX(-50%) translateY(100%) !important; }
 
-  .result-chapter {
-    font-size: 0.72rem;
-    color: var(--amber);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 4px;
-  }
-  .result-snippet {
-    font-size: 0.88rem;
-    color: var(--paper-darker);
-    line-height: 1.5;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-  }
-  .result-snippet mark {
-    background: rgba(200,144,42,0.35);
-    color: var(--amber-light);
-    border-radius: 2px;
-    padding: 0 1px;
-  }
-  .result-position {
-    font-size: 0.7rem;
-    color: rgba(200,144,42,0.35);
-    margin-top: 4px;
-  }
+.dock-btn {
+  background: none; border: none; cursor: pointer;
+  color: rgba(200,144,42,0.7);
+  display: flex; align-items: center; justify-content: center;
+  padding: 7px; border-radius: 50%;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.dock-btn:hover { color: var(--amber-light); background: rgba(200,144,42,0.1); }
 
-  /* ─── TEXT CONTENT ─── */
-  .reader-content-wrap {
-    flex: 1;
-    overflow-y: auto;
-    padding: 48px;
-    background: #160f06;
-    position: relative;
-  }
-  .reader-content-wrap::-webkit-scrollbar { width: 6px; }
-  .reader-content-wrap::-webkit-scrollbar-track { background: transparent; }
-  .reader-content-wrap::-webkit-scrollbar-thumb { background: rgba(200,144,42,0.2); border-radius: 3px; }
+.dock-playpause {
+  width: 46px; height: 46px;
+  background: var(--amber-dark);
+  border: 1.5px solid var(--amber) !important;
+  color: var(--paper) !important;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dock-playpause:hover { background: var(--amber) !important; }
 
-  .reader-content {
-    max-width: 680px;
-    margin: 0 auto;
-    font-size: 1.15rem;
-    line-height: 1.85;
-    color: #e8dfc8;
-    font-weight: 300;
-  }
+.dock-progress-wrap { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.dock-progress-track {
+  height: 3px;
+  background: rgba(200,144,42,0.15);
+  border-radius: 2px; cursor: pointer; position: relative;
+}
+.dock-progress-fill {
+  height: 100%; background: var(--amber);
+  border-radius: 2px; width: 0%;
+  pointer-events: none;
+}
+.dock-info { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--paper-dark); }
 
-  .reader-content p { margin-bottom: 1.2em; }
-  .reader-content h1, .reader-content h2, .reader-content h3 {
-    font-family: 'Playfair Display', serif;
-    color: var(--paper);
-    margin: 1.5em 0 0.6em;
-    font-weight: 400;
-  }
-  .reader-content h1 { font-size: 1.8rem; }
-  .reader-content h2 { font-size: 1.4rem; }
+.dock-speed-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.speed-label { font-size: 0.82rem; color: var(--paper-dark); min-width: 32px; text-align: center; }
+.dock-speed-btn {
+  background: rgba(200,144,42,0.1);
+  border: 1px solid rgba(200,144,42,0.22);
+  color: var(--amber-light);
+  font-family: 'Crimson Pro', serif;
+  font-size: 1rem; line-height: 1;
+  width: 26px; height: 26px;
+  border-radius: 3px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.dock-speed-btn:hover { background: rgba(200,144,42,0.22); }
 
-  .highlight-current {
-    background: rgba(200,144,42,0.2);
-    border-radius: 2px;
-    transition: background 0.3s;
-  }
-  .highlight-search {
-    background: rgba(200,144,42,0.15);
-    border-radius: 2px;
-  }
-  .highlight-search.active-search {
-    background: rgba(200,144,42,0.4);
-    outline: 1px solid var(--amber);
-  }
+.dock-voice-wrap { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+.dock-voice-label { font-size: 0.68rem; color: rgba(200,144,42,0.5); text-transform: uppercase; letter-spacing: 0.08em; }
+.voice-select {
+  background: rgba(200,144,42,0.07);
+  border: 1px solid rgba(200,144,42,0.22);
+  color: var(--paper);
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.84rem;
+  padding: 4px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  max-width: 170px;
+}
 
-  /* ─── PLAYBACK BAR ─── */
-  .playback-bar {
-    background: #0a0700;
-    border-top: 1px solid rgba(200,144,42,0.2);
-    padding: 16px 28px;
-    display: flex; align-items: center; gap: 20px;
-    flex-shrink: 0;
-    box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
-  }
+.dock-search-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(200,144,42,0.07);
+  border: 1px solid rgba(200,144,42,0.22);
+  color: var(--amber-light);
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.84rem;
+  padding: 6px 11px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.dock-search-btn:hover, .dock-search-btn.active { background: rgba(200,144,42,0.15); border-color: var(--amber); }
 
-  .playback-btn {
-    background: none; border: none; cursor: pointer;
-    color: var(--amber-light); transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center;
-    padding: 6px; border-radius: 50%;
-  }
-  .playback-btn:hover { color: var(--amber-light); background: rgba(200,144,42,0.12); }
-  .playback-btn.play-pause {
-    width: 48px; height: 48px;
-    background: var(--amber-dark);
-    border: 1px solid var(--amber);
-    color: var(--paper);
-    border-radius: 50%;
-  }
-  .playback-btn.play-pause:hover { background: var(--amber); }
+/* Voice quality badge */
+.voice-quality {
+  display: inline-block;
+  font-size: 0.6rem;
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.vq-neural { background: rgba(80,200,100,0.2); color: #80e898; border: 1px solid rgba(80,200,100,0.3); }
+.vq-standard { background: rgba(200,144,42,0.1); color: rgba(200,144,42,0.6); }
 
-  .playback-progress-wrap {
-    flex: 1; display: flex; flex-direction: column; gap: 4px;
-  }
-  .playback-progress-track {
-    height: 4px;
-    background: rgba(200,144,42,0.15);
-    border-radius: 2px;
-    cursor: pointer;
-    position: relative;
-  }
-  .playback-progress-fill {
-    height: 100%; background: var(--amber);
-    border-radius: 2px; width: 0%; transition: width 0.3s;
-  }
-  .playback-time {
-    font-size: 0.78rem;
-    color: var(--paper-darker);
-    display: flex; justify-content: space-between;
-  }
+/* ── VOICE GUIDE PANEL ── */
+.voice-guide {
+  position: fixed; bottom: 70px; right: 20px;
+  background: #1a1208;
+  border: 1px solid rgba(200,144,42,0.25);
+  border-radius: 6px;
+  padding: 14px 16px;
+  max-width: 280px;
+  font-size: 0.82rem;
+  color: var(--paper-dark);
+  line-height: 1.6;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  display: none;
+  z-index: 500;
+}
+.voice-guide.show { display: block; }
+.voice-guide strong { color: var(--amber-light); display: block; margin-bottom: 6px; font-size: 0.88rem; }
+.voice-guide ul { padding-left: 14px; }
+.voice-guide li { margin-bottom: 3px; }
+.vg-close {
+  float: right; background: none; border: none;
+  color: var(--paper-dark); cursor: pointer; font-size: 1rem; line-height: 1;
+  margin: -4px -6px 0 0;
+}
 
-  .speed-control {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 0.85rem; color: var(--paper-darker);
-  }
-  .speed-btn {
-    background: rgba(200,144,42,0.1);
-    border: 1px solid rgba(200,144,42,0.25);
-    color: var(--amber-light);
-    font-family: 'Crimson Pro', serif;
-    font-size: 0.85rem;
-    padding: 4px 10px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: all 0.2s;
-    min-width: 44px; text-align: center;
-  }
-  .speed-btn:hover { background: rgba(200,144,42,0.2); }
+/* ── CONTEXT MENU ── */
+.ctx-menu {
+  position: fixed;
+  background: #1a1208;
+  border: 1px solid rgba(200,144,42,0.28);
+  border-radius: 5px;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.6);
+  z-index: 1000; overflow: hidden;
+  min-width: 150px; display: none;
+}
+.ctx-menu.show { display: block; }
+.ctx-item {
+  padding: 10px 16px;
+  cursor: pointer; font-size: 0.88rem;
+  color: var(--paper); transition: background 0.12s;
+  display: flex; align-items: center; gap: 9px;
+}
+.ctx-item:hover { background: rgba(200,144,42,0.1); }
+.ctx-item.danger { color: #ff8888; }
+.ctx-item.danger:hover { background: rgba(255,80,80,0.08); }
+.ctx-divider { height: 1px; background: rgba(200,144,42,0.1); }
 
-  .voice-select-wrap {
-    display: flex; flex-direction: column; gap: 3px;
-    font-size: 0.78rem; color: var(--paper-darker);
-  }
-  .voice-select {
-    background: rgba(200,144,42,0.08);
-    border: 1px solid rgba(200,144,42,0.25);
-    color: var(--paper);
-    font-family: 'Crimson Pro', serif;
-    font-size: 0.85rem;
-    padding: 5px 8px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    max-width: 180px;
-  }
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1c1408;
+  border: 1px solid rgba(200,144,42,0.35);
+  color: var(--paper); padding: 10px 22px;
+  border-radius: 5px; font-size: 0.88rem;
+  box-shadow: 0 3px 16px rgba(0,0,0,0.5);
+  opacity: 0; transition: all 0.25s; z-index: 9000; white-space: nowrap;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  .search-toggle-btn {
-    background: none; border: 1px solid rgba(200,144,42,0.25);
-    color: var(--amber-light); cursor: pointer;
-    padding: 6px 10px; border-radius: var(--radius);
-    transition: all 0.2s; display: flex; align-items: center; gap: 5px;
-    font-family: 'Crimson Pro', serif; font-size: 0.85rem;
-  }
-  .search-toggle-btn:hover { border-color: var(--amber); background: rgba(200,144,42,0.1); }
-  .search-toggle-btn.active { background: rgba(200,144,42,0.15); border-color: var(--amber); }
+/* ── LOADING ── */
+.loading {
+  position: fixed; inset: 0;
+  background: rgba(8,5,0,0.88);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; z-index: 8000;
+}
+.loading.show { display: flex; }
+.spin {
+  width: 36px; height: 36px;
+  border: 2.5px solid rgba(200,144,42,0.15);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-msg { color: var(--amber-light); font-style: italic; font-size: 0.95rem; }
 
-  /* ─── BOOK CONTEXT MENU ─── */
-  .book-menu {
-    position: fixed;
-    background: #1a1208;
-    border: 1px solid rgba(200,144,42,0.3);
-    border-radius: 6px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-    z-index: 1000;
-    overflow: hidden;
-    min-width: 160px;
-    display: none;
-  }
-  .book-menu.visible { display: block; }
-  .book-menu-item {
-    padding: 11px 18px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: var(--paper);
-    transition: background 0.15s;
-    display: flex; align-items: center; gap: 10px;
-  }
-  .book-menu-item:hover { background: rgba(200,144,42,0.1); }
-  .book-menu-item.danger { color: #ff8080; }
-  .book-menu-item.danger:hover { background: rgba(255,80,80,0.1); }
-
-  /* ─── TOAST ─── */
-  .toast {
-    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
-    background: #1a1208;
-    border: 1px solid rgba(200,144,42,0.4);
-    color: var(--paper);
-    padding: 12px 24px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 9998;
-    white-space: nowrap;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* ─── LOADING OVERLAY ─── */
-  .loading-overlay {
-    position: fixed; inset: 0;
-    background: rgba(10,7,0,0.85);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    z-index: 9000; gap: 16px;
-    display: none;
-  }
-  .loading-overlay.visible { display: flex; }
-  .loading-spinner {
-    width: 40px; height: 40px;
-    border: 3px solid rgba(200,144,42,0.2);
-    border-top-color: var(--amber);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  .loading-text {
-    color: var(--amber-light);
-    font-style: italic;
-    font-size: 1rem;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ─── MISC ─── */
-  .divider { height: 1px; background: rgba(200,144,42,0.12); margin: 6px 0; }
-
-  @media (max-width: 700px) {
-    header { padding: 14px 16px; }
-    #library-view { padding: 24px 16px; }
-    .reader-content-wrap { padding: 24px 18px; }
-    .search-panel { width: 260px; }
-    .playback-bar { padding: 12px 14px; gap: 12px; }
-    .voice-select-wrap { display: none; }
-  }
+/* Responsive */
+@media (max-width: 680px) {
+  .reader-scroll { padding: 36px 56px; }
+  .dock-voice-wrap { display: none; }
+  .search-panel.open { width: 260px; }
+}
 </style>
 </head>
-<body>
+<body class="in-library">
 
 <!-- HEADER -->
 <header>
   <div class="logo">
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-      <rect x="3" y="4" width="14" height="19" rx="1.5" fill="none" stroke="#c8902a" stroke-width="1.5"/>
-      <rect x="6" y="4" width="14" height="19" rx="1.5" fill="none" stroke="#c8902a" stroke-width="1.5" opacity="0.5"/>
-      <line x1="6" y1="9" x2="14" y2="9" stroke="#c8902a" stroke-width="1" opacity="0.6"/>
-      <line x1="6" y1="12" x2="14" y2="12" stroke="#c8902a" stroke-width="1" opacity="0.4"/>
-      <line x1="6" y1="15" x2="11" y2="15" stroke="#c8902a" stroke-width="1" opacity="0.4"/>
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <rect x="2" y="3" width="12" height="17" rx="1.5" stroke="#e8b84b" stroke-width="1.4"/>
+      <rect x="5" y="3" width="12" height="17" rx="1.5" stroke="#e8b84b" stroke-width="1.4" opacity="0.45"/>
+      <line x1="5" y1="8" x2="11" y2="8" stroke="#e8b84b" stroke-width="1" opacity="0.55"/>
+      <line x1="5" y1="11" x2="11" y2="11" stroke="#e8b84b" stroke-width="1" opacity="0.38"/>
+      <line x1="5" y1="14" x2="9" y2="14" stroke="#e8b84b" stroke-width="1" opacity="0.38"/>
     </svg>
     PersonalLibrary
   </div>
-  <div class="header-actions">
-    <button class="btn btn-ghost" id="back-to-library" style="display:none">← Library</button>
-    <button class="btn btn-primary" id="add-book-btn" onclick="document.getElementById('file-input').click()">
-      + Add Book
-    </button>
+  <div class="header-right">
+    <button class="btn btn-ghost" id="back-btn" style="display:none" onclick="goToLibrary()">← Library</button>
+    <button class="btn btn-primary" id="add-btn" onclick="document.getElementById('file-input').click()">+ Add Book</button>
     <input type="file" id="file-input" accept=".epub,.txt,.html,.htm" multiple>
   </div>
 </header>
 
-<!-- LIBRARY VIEW -->
+<!-- ══════════ LIBRARY VIEW ══════════ -->
 <div id="library-view" class="view active">
-  <div class="library-header">
-    <div>
-      <h1 class="library-title">Your <span>Library</span></h1>
-      <div class="library-count" id="library-count">No books yet</div>
-    </div>
-  </div>
+  <h1 class="lib-heading">Your <em>Library</em></h1>
+  <div class="lib-sub" id="lib-count">No books yet</div>
 
-  <div class="shelf-container" id="shelf-container">
+  <div class="shelf-wrap">
     <div class="books-row" id="books-row">
       <div class="empty-shelf" id="empty-shelf">
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <rect x="8" y="10" width="20" height="28" rx="2" stroke="#c8902a" stroke-width="1.5"/>
-          <rect x="12" y="10" width="20" height="28" rx="2" stroke="#c8902a" stroke-width="1.5" opacity="0.5"/>
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="opacity:0.25">
+          <rect x="6" y="8" width="16" height="24" rx="2" stroke="#c8902a" stroke-width="1.4"/>
+          <rect x="10" y="8" width="16" height="24" rx="2" stroke="#c8902a" stroke-width="1.4" opacity="0.5"/>
         </svg>
         Your shelf is empty — add your first book below
       </div>
@@ -696,9 +678,9 @@
   </div>
 
   <div class="upload-zone" id="upload-zone">
-    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="margin-bottom:12px;opacity:0.5">
-      <path d="M20 28V12M20 12L14 18M20 12L26 18" stroke="#c8902a" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M10 30h20" stroke="#c8902a" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style="opacity:0.4;margin-bottom:10px">
+      <path d="M18 26V10M18 10L12 16M18 10L24 16" stroke="#c8902a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M8 28h20" stroke="#c8902a" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
     </svg>
     <h3>Drop books here to add them</h3>
     <p>or click to browse your files</p>
@@ -706,99 +688,135 @@
   </div>
 </div>
 
-<!-- READER VIEW -->
+<!-- ══════════ READER VIEW ══════════ -->
 <div id="reader-view" class="view">
   <div class="reader-topbar">
-    <div class="reader-book-title" id="reader-title">—</div>
-    <select class="reader-chapter-select" id="chapter-select"></select>
+    <div class="reader-book-title" id="reader-title"></div>
+    <select class="chapter-select" id="chapter-select"></select>
   </div>
 
   <div class="reader-body">
-    <!-- Search Panel -->
-    <div class="search-panel collapsed" id="search-panel">
-      <div class="search-header">
-        <div class="search-input-wrap">
-          <input type="text" class="search-input" id="search-input" placeholder="Search in book…">
-          <button class="search-clear" id="search-clear">✕</button>
+    <!-- Text area -->
+    <div class="page-wrap" id="page-wrap">
+      <!-- Left arrow -->
+      <div class="page-arrow left" id="arrow-left" onclick="prevSentence()">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M17 6L9 14L17 22"/>
+        </svg>
+      </div>
+
+      <!-- Scroll area -->
+      <div class="reader-scroll" id="reader-scroll">
+        <div class="reader-content" id="reader-content"></div>
+      </div>
+
+      <!-- Custom scrollbar -->
+      <div class="custom-scrollbar" id="custom-scrollbar">
+        <div class="custom-scrollbar-thumb" id="scrollbar-thumb"></div>
+      </div>
+
+      <!-- Right arrow -->
+      <div class="page-arrow right" id="arrow-right" onclick="nextSentence()">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M11 6L19 14L11 22"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Search panel -->
+    <div class="search-panel" id="search-panel">
+      <div class="search-inner">
+        <div class="search-top">
+          <div class="search-box">
+            <input type="text" class="search-input" id="search-input" placeholder="Search in book…">
+            <button class="search-x" id="search-x">✕</button>
+          </div>
+          <div class="search-meta" id="search-meta"></div>
         </div>
-        <div class="search-count" id="search-count"></div>
-      </div>
-      <div class="search-results" id="search-results"></div>
-    </div>
-
-    <!-- Text Content -->
-    <div class="reader-content-wrap" id="reader-content-wrap">
-      <div class="reader-content" id="reader-content"></div>
-    </div>
-  </div>
-
-  <!-- Playback Bar -->
-  <div class="playback-bar">
-    <button class="playback-btn" id="prev-sentence-btn" title="Previous sentence">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-        <rect x="3" y="4" width="2.5" height="12" rx="1"/>
-        <path d="M17 4L8 10L17 16V4Z"/>
-      </svg>
-    </button>
-
-    <button class="playback-btn play-pause" id="play-pause-btn" title="Play/Pause">
-      <svg id="play-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-        <path d="M6 4L16 10L6 16V4Z"/>
-      </svg>
-      <svg id="pause-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style="display:none">
-        <rect x="4" y="3" width="4" height="14" rx="1.5"/>
-        <rect x="12" y="3" width="4" height="14" rx="1.5"/>
-      </svg>
-    </button>
-
-    <button class="playback-btn" id="next-sentence-btn" title="Next sentence">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-        <rect x="14.5" y="4" width="2.5" height="12" rx="1"/>
-        <path d="M3 4L12 10L3 16V4Z"/>
-      </svg>
-    </button>
-
-    <div class="playback-progress-wrap">
-      <div class="playback-progress-track" id="progress-track">
-        <div class="playback-progress-fill" id="progress-fill"></div>
-      </div>
-      <div class="playback-time">
-        <span id="progress-text">0%</span>
-        <span id="chapter-label">—</span>
+        <div class="search-list" id="search-list"></div>
       </div>
     </div>
-
-    <div class="speed-control">
-      <button class="speed-btn" id="speed-down-btn">−</button>
-      <span id="speed-display">1×</span>
-      <button class="speed-btn" id="speed-up-btn">+</button>
-    </div>
-
-    <div class="voice-select-wrap">
-      <span>Voice</span>
-      <select class="voice-select" id="voice-select"></select>
-    </div>
-
-    <button class="search-toggle-btn" id="search-toggle-btn">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="6" cy="6" r="4"/>
-        <line x1="9.5" y1="9.5" x2="12" y2="12"/>
-      </svg>
-      Search
-    </button>
   </div>
 </div>
 
-<!-- Context Menu -->
-<div class="book-menu" id="book-menu">
-  <div class="book-menu-item" id="menu-open">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h10v8H2z"/><line x1="4" y1="6" x2="10" y2="6"/><line x1="4" y1="8.5" x2="8" y2="8.5"/></svg>
+<!-- ══════════ DOCK ══════════ -->
+<div class="dock-trigger" id="dock-trigger"></div>
+
+<div class="dock" id="dock">
+  <button class="dock-btn" onclick="prevSentence()" title="Previous (←)">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+      <rect x="2" y="3" width="2.5" height="12" rx="1"/>
+      <path d="M15 3L7 9L15 15V3Z"/>
+    </svg>
+  </button>
+
+  <button class="dock-btn dock-playpause" id="play-btn" onclick="togglePlay()" title="Play/Pause (Space)">
+    <svg id="ico-play" width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><path d="M5 3L15 9L5 15V3Z"/></svg>
+    <svg id="ico-pause" width="18" height="18" viewBox="0 0 18 18" fill="currentColor" style="display:none"><rect x="3" y="2.5" width="4" height="13" rx="1.5"/><rect x="11" y="2.5" width="4" height="13" rx="1.5"/></svg>
+  </button>
+
+  <button class="dock-btn" onclick="nextSentence()" title="Next (→)">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+      <rect x="13.5" y="3" width="2.5" height="12" rx="1"/>
+      <path d="M3 3L11 9L3 15V3Z"/>
+    </svg>
+  </button>
+
+  <div class="dock-progress-wrap">
+    <div class="dock-progress-track" id="prog-track" onclick="seekProgress(event)">
+      <div class="dock-progress-fill" id="prog-fill"></div>
+    </div>
+    <div class="dock-info">
+      <span id="prog-pct">0%</span>
+      <span id="prog-chapter">—</span>
+    </div>
+  </div>
+
+  <div class="dock-speed-wrap">
+    <button class="dock-speed-btn" onclick="changeSpeed(-1)">−</button>
+    <span class="speed-label" id="speed-lbl">1×</span>
+    <button class="dock-speed-btn" onclick="changeSpeed(1)">+</button>
+  </div>
+
+  <div class="dock-voice-wrap">
+    <div class="dock-voice-label">Voice
+      <button onclick="toggleVoiceGuide()" style="background:none;border:none;color:rgba(200,144,42,0.45);cursor:pointer;font-size:0.75rem;margin-left:3px" title="Voice quality tips">?</button>
+    </div>
+    <select class="voice-select" id="voice-select" onchange="voiceChanged()"></select>
+  </div>
+
+  <button class="dock-search-btn" id="search-btn" onclick="toggleSearch()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="5.5" cy="5.5" r="4"/>
+      <line x1="8.5" y1="8.5" x2="11.5" y2="11.5"/>
+    </svg>
+    Search
+  </button>
+</div>
+
+<!-- Voice guide -->
+<div class="voice-guide" id="voice-guide">
+  <button class="vg-close" onclick="toggleVoiceGuide()">✕</button>
+  <strong>🎙 Getting the best voice quality</strong>
+  <ul>
+    <li><b>macOS / iOS Safari:</b> Choose "Siri Voice 1" or "Siri Voice 2" — neural quality</li>
+    <li><b>Chrome (any OS):</b> Look for voices labeled "Online" — these are Google's neural voices</li>
+    <li><b>Windows:</b> "Microsoft Aria Online" or "Microsoft Guy Online" — very natural</li>
+    <li><b>Tip:</b> Voices marked ★ Neural above are recommended</li>
+  </ul>
+  <p style="margin-top:8px;font-size:0.78rem;opacity:0.6">Voice quality depends on your device. Online/neural voices sound most human.</p>
+</div>
+
+<!-- Context menu -->
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-item" onclick="ctxOpen()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="2" width="10" height="9" rx="1"/><line x1="3.5" y1="5" x2="9.5" y2="5"/><line x1="3.5" y1="7.5" x2="7.5" y2="7.5"/></svg>
     Open
   </div>
-  <div class="divider"></div>
-  <div class="book-menu-item danger" id="menu-delete">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h10M5 4V2.5h4V4M5.5 6.5v4M8.5 6.5v4M3 4l.8 7.5h6.4L11 4"/></svg>
-    Remove from Library
+  <div class="ctx-divider"></div>
+  <div class="ctx-item danger" onclick="ctxDelete()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3.5h9M5 3.5V2h3v1.5M4.5 5.5l.4 5M8.5 5.5l-.4 5M2.5 3.5l.7 7h6.6l.7-7"/></svg>
+    Remove
   </div>
 </div>
 
@@ -806,860 +824,708 @@
 <div class="toast" id="toast"></div>
 
 <!-- Loading -->
-<div class="loading-overlay" id="loading-overlay">
-  <div class="loading-spinner"></div>
-  <div class="loading-text" id="loading-text">Parsing book…</div>
+<div class="loading" id="loading">
+  <div class="spin"></div>
+  <div class="loading-msg" id="loading-msg">Parsing book…</div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // DATABASE
-// ═══════════════════════════════════════════════
-const DB_NAME = 'PersonalLibrary';
-const DB_VER = 1;
+// ═══════════════════════════════════════════════════
 let db;
-
-function openDB() {
+async function openDB() {
   return new Promise((res, rej) => {
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = e => {
+    const r = indexedDB.open('PersonalLibrary_v2', 1);
+    r.onupgradeneeded = e => {
       const d = e.target.result;
-      if (!d.objectStoreNames.contains('books')) {
-        const store = d.createObjectStore('books', { keyPath: 'id' });
-        store.createIndex('title', 'title', { unique: false });
-      }
+      if (!d.objectStoreNames.contains('books'))
+        d.createObjectStore('books', { keyPath: 'id' });
     };
-    req.onsuccess = e => { db = e.target.result; res(db); };
-    req.onerror = () => rej(req.error);
+    r.onsuccess = e => { db = e.target.result; res(); };
+    r.onerror = () => rej(r.error);
   });
 }
+const tx = (mode='readonly') => db.transaction('books', mode).objectStore('books');
+const dbAll  = () => new Promise((r,j) => { const q=tx().getAll(); q.onsuccess=()=>r(q.result); q.onerror=()=>j(); });
+const dbPut  = v  => new Promise((r,j) => { const q=tx('readwrite').put(v); q.onsuccess=()=>r(); q.onerror=()=>j(); });
+const dbDel  = k  => new Promise((r,j) => { const q=tx('readwrite').delete(k); q.onsuccess=()=>r(); q.onerror=()=>j(); });
 
-function dbGet(store, key) {
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readonly');
-    const req = tx.objectStore(store).get(key);
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
-  });
-}
-
-function dbPut(store, value) {
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readwrite');
-    const req = tx.objectStore(store).put(value);
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
-  });
-}
-
-function dbDelete(store, key) {
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readwrite');
-    const req = tx.objectStore(store).delete(key);
-    req.onsuccess = () => res();
-    req.onerror = () => rej(req.error);
-  });
-}
-
-function dbGetAll(store) {
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readonly');
-    const req = tx.objectStore(store).getAll();
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
-  });
-}
-
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // STATE
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 let books = [];
-let currentBook = null;
-let currentChapterIndex = 0;
+let book  = null;   // current open book
+let chIdx = 0;
+let sIdx  = 0;
 let sentences = [];
-let currentSentenceIndex = 0;
-let isPlaying = false;
-let speechRate = 1.0;
-let selectedVoice = null;
+let playing = false;
+let rate = 1.0;
 let voices = [];
-let contextMenuBookId = null;
-let searchTimeout = null;
-let currentSearchResults = [];
-let currentSearchMatch = 0;
+let selVoice = null;
+let ctxBookId = null;
+let searchTimer = null;
+let searchResults = [];
 
-// ═══════════════════════════════════════════════
-// UI HELPERS
-// ═══════════════════════════════════════════════
-function showToast(msg, duration = 2500) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
+const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
+
+// ═══════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════
+function toast(msg, ms=2600) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+function showLoad(msg='Loading…') {
+  document.getElementById('loading-msg').textContent = msg;
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoad() { document.getElementById('loading').classList.remove('show'); }
+
+function colorIdx(title) {
+  let h = 0;
+  for (let i=0; i<title.length; i++) h = title.charCodeAt(i) + ((h<<5)-h);
+  return Math.abs(h) % 10;
 }
 
-function showLoading(msg = 'Loading…') {
-  document.getElementById('loading-text').textContent = msg;
-  document.getElementById('loading-overlay').classList.add('visible');
+// ═══════════════════════════════════════════════════
+// VIEWS
+// ═══════════════════════════════════════════════════
+function showLibrary() {
+  document.getElementById('library-view').classList.add('active');
+  document.getElementById('reader-view').classList.remove('active');
+  document.getElementById('back-btn').style.display = 'none';
+  document.getElementById('add-btn').style.display  = 'block';
+  document.body.classList.add('in-library');
+  document.getElementById('dock').classList.remove('visible');
+}
+function showReader() {
+  document.getElementById('library-view').classList.remove('active');
+  document.getElementById('reader-view').classList.add('active');
+  document.getElementById('back-btn').style.display = 'block';
+  document.getElementById('add-btn').style.display  = 'none';
+  document.body.classList.remove('in-library');
+}
+function goToLibrary() {
+  stopSpeech();
+  renderLibrary();
+  showLibrary();
 }
 
-function hideLoading() {
-  document.getElementById('loading-overlay').classList.remove('visible');
-}
-
-function showView(id) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  const isReader = id === 'reader-view';
-  document.getElementById('back-to-library').style.display = isReader ? 'block' : 'none';
-  document.getElementById('add-book-btn').style.display = isReader ? 'none' : 'block';
-}
-
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // EPUB PARSER
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 async function parseEpub(file) {
   const zip = await JSZip.loadAsync(file);
-
-  // Find container.xml
   const containerXml = await zip.file('META-INF/container.xml').async('text');
   const parser = new DOMParser();
-  const containerDoc = parser.parseFromString(containerXml, 'application/xml');
-  const opfPath = containerDoc.querySelector('rootfile').getAttribute('full-path');
-  const opfDir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
+  const contDoc = parser.parseFromString(containerXml, 'application/xml');
+  const opfPath = contDoc.querySelector('rootfile').getAttribute('full-path');
+  const opfDir  = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/')+1) : '';
+  const opfXml  = await zip.file(opfPath).async('text');
+  const opfDoc  = parser.parseFromString(opfXml, 'application/xml');
 
-  // Parse OPF
-  const opfXml = await zip.file(opfPath).async('text');
-  const opfDoc = parser.parseFromString(opfXml, 'application/xml');
+  const title  = opfDoc.querySelector('title')?.textContent?.trim()   || file.name.replace('.epub','');
+  const author = opfDoc.querySelector('creator')?.textContent?.trim() || 'Unknown';
 
-  const title = opfDoc.querySelector('title')?.textContent || file.name.replace('.epub', '');
-  const author = opfDoc.querySelector('creator')?.textContent || 'Unknown Author';
-
-  // Get spine order
-  const spineItems = Array.from(opfDoc.querySelectorAll('spine itemref')).map(i => i.getAttribute('idref'));
-  const manifestItems = {};
-  opfDoc.querySelectorAll('manifest item').forEach(item => {
-    manifestItems[item.getAttribute('id')] = {
-      href: item.getAttribute('href'),
-      mediaType: item.getAttribute('media-type')
-    };
+  // Manifest
+  const manifest = {};
+  opfDoc.querySelectorAll('manifest item').forEach(it => {
+    manifest[it.getAttribute('id')] = { href: it.getAttribute('href'), mt: it.getAttribute('media-type') };
   });
 
-  // Try to get cover image
-  let coverData = null;
-  const coverMeta = opfDoc.querySelector('meta[name="cover"]');
-  if (coverMeta) {
-    const coverId = coverMeta.getAttribute('content');
-    const coverItem = manifestItems[coverId];
-    if (coverItem) {
-      try {
-        const coverPath = opfDir + coverItem.href;
-        const coverFile = zip.file(coverPath) || zip.file(coverItem.href);
-        if (coverFile) {
-          const blob = await coverFile.async('blob');
-          coverData = URL.createObjectURL(blob);
-        }
-      } catch(e) {}
-    }
-  }
+  // Spine
+  const spineIds = Array.from(opfDoc.querySelectorAll('spine itemref')).map(i => i.getAttribute('idref'));
 
-  // Extract chapters
   const chapters = [];
-  for (const idref of spineItems) {
-    const item = manifestItems[idref];
-    if (!item || !item.mediaType?.includes('html')) continue;
-    const filePath = opfDir + item.href;
-    const f = zip.file(filePath) || zip.file(item.href);
+  for (const id of spineIds) {
+    const item = manifest[id];
+    if (!item || !item.mt?.includes('html')) continue;
+    const path = opfDir + item.href;
+    const f = zip.file(path) || zip.file(item.href);
     if (!f) continue;
-
     const html = await f.async('text');
-    const doc = parser.parseFromString(html, 'text/html');
-
-    // Remove scripts/styles
-    doc.querySelectorAll('script, style, nav').forEach(el => el.remove());
-
-    const bodyText = doc.body?.innerText || doc.body?.textContent || '';
-    const chapterTitle = doc.querySelector('h1, h2, h3, title')?.textContent?.trim() || `Chapter ${chapters.length + 1}`;
-
-    if (bodyText.trim().length < 50) continue;
-
-    chapters.push({
-      title: chapterTitle,
-      html: doc.body?.innerHTML || bodyText,
-      text: bodyText.trim()
-    });
+    const doc  = parser.parseFromString(html, 'text/html');
+    doc.querySelectorAll('script,style,nav').forEach(e=>e.remove());
+    const text = (doc.body?.textContent || '').trim();
+    if (text.length < 60) continue;
+    const chTitle = doc.querySelector('h1,h2,h3,title')?.textContent?.trim() || `Part ${chapters.length+1}`;
+    chapters.push({ title: chTitle, html: doc.body?.innerHTML || text, text });
   }
-
-  return { title, author, chapters, coverData };
+  return { title, author, chapters };
 }
 
 async function parseTxt(file) {
   const text = await file.text();
-  const title = file.name.replace(/\.(txt|html|htm)$/i, '');
-  const paragraphs = text.split(/\n{2,}/).filter(p => p.trim().length > 0);
-  const html = paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('\n');
-  return {
-    title,
-    author: 'Unknown',
-    chapters: [{ title: title, html, text: text.trim() }],
-    coverData: null
-  };
+  const title = file.name.replace(/\.(txt)$/i,'');
+  const html = text.split(/\n{2,}/).filter(p=>p.trim()).map(p=>`<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+  return { title, author:'', chapters:[{ title, html, text:text.trim() }] };
 }
 
 async function parseHtml(file) {
   const text = await file.text();
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(text, 'text/html');
-  doc.querySelectorAll('script, style').forEach(el => el.remove());
+  const doc = new DOMParser().parseFromString(text,'text/html');
+  doc.querySelectorAll('script,style').forEach(e=>e.remove());
   const title = doc.querySelector('title')?.textContent || file.name;
-  const bodyHtml = doc.body?.innerHTML || text;
-  const bodyText = doc.body?.textContent || text;
-  return {
-    title,
-    author: 'Unknown',
-    chapters: [{ title, html: bodyHtml, text: bodyText.trim() }],
-    coverData: null
-  };
+  return { title, author:'', chapters:[{ title, html:doc.body?.innerHTML||text, text:(doc.body?.textContent||text).trim() }] };
 }
 
-// ═══════════════════════════════════════════════
-// LIBRARY UI
-// ═══════════════════════════════════════════════
-const BOOK_COLORS = 8;
-
-function colorFromTitle(title) {
-  let hash = 0;
-  for (let i = 0; i < title.length; i++) hash = title.charCodeAt(i) + ((hash << 5) - hash);
-  return Math.abs(hash) % BOOK_COLORS;
-}
-
-function renderLibrary() {
-  const row = document.getElementById('books-row');
-  const empty = document.getElementById('empty-shelf');
-  const countEl = document.getElementById('library-count');
-
-  row.querySelectorAll('.book-spine').forEach(b => b.remove());
-
-  if (books.length === 0) {
-    empty.style.display = 'flex';
-    countEl.textContent = 'No books yet';
-    return;
-  }
-
-  empty.style.display = 'none';
-  countEl.textContent = `${books.length} book${books.length !== 1 ? 's' : ''} in your collection`;
-
-  books.forEach(book => {
-    const colorIdx = colorFromTitle(book.title);
-    const spine = document.createElement('div');
-    spine.className = `book-spine book-color-${colorIdx}`;
-    spine.dataset.id = book.id;
-
-    const initials = book.title.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
-    const progress = book.progress || 0;
-
-    spine.innerHTML = `
-      <div class="book-spine-inner">
-        <div class="spine-ornament"></div>
-        <div class="spine-title">${book.title}</div>
-        <div class="spine-author">${book.author}</div>
-        <div class="spine-ornament"></div>
-      </div>
-      <div class="book-progress-bar">
-        <div class="book-progress-fill" style="width:${progress}%"></div>
-      </div>
-    `;
-
-    spine.addEventListener('click', (e) => {
-      if (e.button === 0) openBook(book.id);
-    });
-
-    spine.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      showContextMenu(e.clientX, e.clientY, book.id);
-    });
-
-    row.appendChild(spine);
-  });
-}
-
-function showContextMenu(x, y, bookId) {
-  contextMenuBookId = bookId;
-  const menu = document.getElementById('book-menu');
-  menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
-  menu.classList.add('visible');
-}
-
-function hideContextMenu() {
-  document.getElementById('book-menu').classList.remove('visible');
-  contextMenuBookId = null;
-}
-
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // FILE HANDLING
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 async function handleFiles(files) {
-  for (const file of files) {
+  for (const file of Array.from(files)) {
     const ext = file.name.split('.').pop().toLowerCase();
-    showLoading(`Parsing "${file.name}"…`);
+    showLoad(`Parsing "${file.name}"…`);
     try {
       let parsed;
-      if (ext === 'epub') parsed = await parseEpub(file);
-      else if (ext === 'txt') parsed = await parseTxt(file);
-      else if (ext === 'html' || ext === 'htm') parsed = await parseHtml(file);
-      else { showToast(`Unsupported format: .${ext}`); continue; }
+      if (ext==='epub') parsed = await parseEpub(file);
+      else if (ext==='txt') parsed = await parseTxt(file);
+      else if (ext==='html'||ext==='htm') parsed = await parseHtml(file);
+      else { toast(`Unsupported: .${ext}`); continue; }
 
-      const id = 'book_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-      const book = {
-        id,
-        title: parsed.title,
-        author: parsed.author,
-        chapters: parsed.chapters,
-        addedAt: Date.now(),
-        progress: 0,
-        lastChapter: 0,
-        lastSentence: 0,
-        lastVoice: null,
-        lastSpeed: 1.0
-      };
-
-      await dbPut('books', book);
-      books.push(book);
+      const id = 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const b = { id, title:parsed.title, author:parsed.author, chapters:parsed.chapters,
+                  addedAt:Date.now(), progress:0, lastCh:0, lastS:0, lastVoice:'', lastRate:1.0 };
+      await dbPut(b);
+      books.unshift(b);
       renderLibrary();
-      showToast(`"${parsed.title}" added to your library`);
-    } catch (err) {
-      console.error(err);
-      showToast(`Failed to parse "${file.name}"`);
+      toast(`"${parsed.title}" added`);
+    } catch(e) {
+      console.error(e);
+      toast(`Failed to parse "${file.name}"`);
     }
   }
-  hideLoading();
+  hideLoad();
 }
 
-// ═══════════════════════════════════════════════
-// READER
-// ═══════════════════════════════════════════════
-function splitSentences(text) {
-  const raw = text.match(/[^.!?…]+[.!?…]+(\s|$)|[^.!?…]+$/g) || [text];
-  return raw.map(s => s.trim()).filter(s => s.length > 2);
+// ═══════════════════════════════════════════════════
+// LIBRARY RENDER
+// ═══════════════════════════════════════════════════
+function renderLibrary() {
+  const row   = document.getElementById('books-row');
+  const empty = document.getElementById('empty-shelf');
+  const count = document.getElementById('lib-count');
+  row.querySelectorAll('.book-spine').forEach(e=>e.remove());
+
+  if (!books.length) {
+    empty.style.display='flex';
+    count.textContent='No books yet';
+    return;
+  }
+  empty.style.display='none';
+  count.textContent=`${books.length} book${books.length!==1?'s':''} in your collection`;
+
+  books.forEach(b => {
+    const ci = colorIdx(b.title);
+    const el = document.createElement('div');
+    el.className = `book-spine bc${ci}`;
+    el.dataset.id = b.id;
+    el.innerHTML = `
+      <div class="book-spine-inner">
+        <div class="spine-line"></div>
+        <div class="spine-title">${b.title}</div>
+        <div class="spine-author">${b.author}</div>
+        <div class="spine-line"></div>
+      </div>
+      <div class="spine-progress"><div class="spine-progress-fill" style="width:${b.progress||0}%"></div></div>
+    `;
+    el.addEventListener('click', () => openBook(b.id));
+    el.addEventListener('contextmenu', e => { e.preventDefault(); showCtx(e.clientX, e.clientY, b.id); });
+    row.appendChild(el);
+  });
 }
 
-async function openBook(id) {
-  const book = books.find(b => b.id === id);
+// ═══════════════════════════════════════════════════
+// OPEN BOOK
+// ═══════════════════════════════════════════════════
+function openBook(id) {
+  book = books.find(b=>b.id===id);
   if (!book) return;
-  currentBook = book;
-  currentChapterIndex = book.lastChapter || 0;
-  currentSentenceIndex = book.lastSentence || 0;
+  chIdx = book.lastCh||0;
+  sIdx  = book.lastS||0;
+  rate  = book.lastRate||1.0;
 
-  // Populate chapter select
+  // Chapter select
   const sel = document.getElementById('chapter-select');
   sel.innerHTML = '';
-  book.chapters.forEach((ch, i) => {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = ch.title.slice(0, 50);
-    sel.appendChild(opt);
+  book.chapters.forEach((ch,i)=>{
+    const o=document.createElement('option');
+    o.value=i; o.textContent=ch.title.slice(0,50);
+    sel.appendChild(o);
   });
-  sel.value = currentChapterIndex;
+  sel.value = chIdx;
 
   document.getElementById('reader-title').textContent = book.title;
-  document.getElementById('voice-select').value = book.lastVoice || '';
-  speechRate = book.lastSpeed || 1.0;
-  updateSpeedDisplay();
-
-  loadChapter(currentChapterIndex, currentSentenceIndex);
-  showView('reader-view');
+  updateSpeedLabel();
+  showReader();
+  loadChapter(chIdx, sIdx);
+  loadVoices();
 }
 
-function loadChapter(chapterIdx, startSentence = 0) {
+// ═══════════════════════════════════════════════════
+// LOAD CHAPTER
+// ═══════════════════════════════════════════════════
+function loadChapter(ci, si=0) {
   stopSpeech();
-  currentChapterIndex = chapterIdx;
-  currentSentenceIndex = startSentence;
+  chIdx = ci; sIdx = si;
+  const ch = book.chapters[ci];
+  if (!ch) return;
 
-  const chapter = currentBook.chapters[chapterIdx];
-  if (!chapter) return;
+  document.getElementById('chapter-select').value = ci;
+  document.getElementById('prog-chapter').textContent = ch.title.slice(0,36);
 
-  document.getElementById('chapter-select').value = chapterIdx;
-  document.getElementById('chapter-label').textContent = chapter.title.slice(0, 40);
+  sentences = splitSentences(ch.text);
 
-  // Parse sentences from full text
-  sentences = splitSentences(chapter.text);
-
-  // Render HTML
   const content = document.getElementById('reader-content');
-  content.innerHTML = chapter.html || chapter.text;
+  content.innerHTML = ch.html || ch.text;
+  content.querySelectorAll('script,style').forEach(e=>e.remove());
 
-  // Wrap text nodes in spans for highlighting
-  wrapTextNodes(content);
-
+  updateScrollbar();
   updateProgress();
-  highlightCurrentSentence();
-  scrollToCurrentSentence();
+  highlightReading();
+  scrollToReading();
 }
 
-function wrapTextNodes(el) {
-  // We'll use a sentence-based highlight approach via the search spans
-  el.querySelectorAll('script, style').forEach(e => e.remove());
+// ═══════════════════════════════════════════════════
+// SENTENCE SPLITTING
+// ═══════════════════════════════════════════════════
+function splitSentences(text) {
+  const raw = text.match(/[^.!?…]+(?:[.!?…]+(?:\s|$))|[^.!?…]+$/g) || [text];
+  return raw.map(s=>s.trim()).filter(s=>s.length>3);
 }
 
-function highlightCurrentSentence() {
+// ═══════════════════════════════════════════════════
+// HIGHLIGHTING
+// ═══════════════════════════════════════════════════
+function clearHighlight(cls) {
   const content = document.getElementById('reader-content');
-  // Remove old highlight
-  content.querySelectorAll('.highlight-current').forEach(el => {
-    const parent = el.parentNode;
-    parent.replaceChild(document.createTextNode(el.textContent), el);
-    parent.normalize();
+  content.querySelectorAll(`.${cls}`).forEach(el => {
+    const p = el.parentNode;
+    p.replaceChild(document.createTextNode(el.textContent), el);
+    p.normalize();
   });
-
-  if (sentences.length === 0) return;
-  const sentence = sentences[currentSentenceIndex];
-  if (!sentence) return;
-
-  highlightTextInContent(content, sentence, 'highlight-current');
-  scrollToCurrentSentence();
 }
 
-function highlightTextInContent(container, text, className) {
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
-  const cleanSearch = text.replace(/\s+/g, ' ').trim();
+function highlightText(text, cls) {
+  if (!text) return null;
+  const content = document.getElementById('reader-content');
+  const clean = text.replace(/\s+/g,' ').trim();
+  const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
   let node;
   while (node = walker.nextNode()) {
-    const idx = node.nodeValue.indexOf(cleanSearch);
+    const idx = node.nodeValue.indexOf(clean);
     if (idx !== -1) {
-      const before = node.nodeValue.substring(0, idx);
-      const match = node.nodeValue.substring(idx, idx + cleanSearch.length);
-      const after = node.nodeValue.substring(idx + cleanSearch.length);
-      const span = document.createElement('span');
-      span.className = className;
+      const before = node.nodeValue.slice(0, idx);
+      const match  = node.nodeValue.slice(idx, idx+clean.length);
+      const after  = node.nodeValue.slice(idx+clean.length);
+      const span   = document.createElement('span');
+      span.className = cls;
       span.textContent = match;
-      const parent = node.parentNode;
-      parent.insertBefore(document.createTextNode(before), node);
-      parent.insertBefore(span, node);
-      parent.insertBefore(document.createTextNode(after), node);
-      parent.removeChild(node);
+      const p = node.parentNode;
+      if (before) p.insertBefore(document.createTextNode(before), node);
+      p.insertBefore(span, node);
+      if (after) p.insertBefore(document.createTextNode(after), node);
+      p.removeChild(node);
       return span;
     }
   }
   return null;
 }
 
-function scrollToCurrentSentence() {
-  const el = document.querySelector('.highlight-current');
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
+function highlightReading() {
+  clearHighlight('highlight-reading');
+  const s = sentences[sIdx];
+  if (s) highlightText(s, 'highlight-reading');
 }
 
+function scrollToReading() {
+  const el = document.querySelector('.highlight-reading');
+  if (el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+// ═══════════════════════════════════════════════════
+// CUSTOM SCROLLBAR
+// ═══════════════════════════════════════════════════
+function updateScrollbar() {
+  const scroll = document.getElementById('reader-scroll');
+  const thumb  = document.getElementById('scrollbar-thumb');
+  const track  = document.getElementById('custom-scrollbar');
+  const trackH = track.clientHeight;
+  const ratio  = scroll.clientHeight / scroll.scrollHeight;
+  const thumbH = Math.max(40, trackH * ratio);
+  thumb.style.height = thumbH + 'px';
+  syncScrollbar();
+}
+
+function syncScrollbar() {
+  const scroll = document.getElementById('reader-scroll');
+  const thumb  = document.getElementById('scrollbar-thumb');
+  const track  = document.getElementById('custom-scrollbar');
+  const trackH = track.clientHeight;
+  const thumbH = thumb.clientHeight;
+  const scrollable = scroll.scrollHeight - scroll.clientHeight;
+  const pos = scrollable > 0 ? (scroll.scrollTop / scrollable) * (trackH - thumbH) : 0;
+  thumb.style.top = pos + 'px';
+}
+
+// ═══════════════════════════════════════════════════
+// PROGRESS
+// ═══════════════════════════════════════════════════
 function updateProgress() {
-  if (!currentBook) return;
-  const totalSentences = currentBook.chapters.reduce((acc, ch) => acc + splitSentences(ch.text).length, 0);
-  let sentencesBefore = 0;
-  for (let i = 0; i < currentChapterIndex; i++) {
-    sentencesBefore += splitSentences(currentBook.chapters[i].text).length;
-  }
-  const globalSentence = sentencesBefore + currentSentenceIndex;
-  const pct = totalSentences > 0 ? Math.round((globalSentence / totalSentences) * 100) : 0;
-
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-text').textContent = pct + '%';
-  currentBook.progress = pct;
-  currentBook.lastChapter = currentChapterIndex;
-  currentBook.lastSentence = currentSentenceIndex;
-  dbPut('books', currentBook);
-
-  // Update spine progress bar
-  const spine = document.querySelector(`.book-spine[data-id="${currentBook.id}"] .book-progress-fill`);
-  if (spine) spine.style.width = pct + '%';
+  if (!book) return;
+  let total=0, before=0;
+  book.chapters.forEach((ch,i)=>{
+    const n = splitSentences(ch.text).length;
+    if (i < chIdx) before += n;
+    total += n;
+  });
+  const global = before + sIdx;
+  const pct = total>0 ? Math.round(global/total*100) : 0;
+  document.getElementById('prog-fill').style.width = pct+'%';
+  document.getElementById('prog-pct').textContent = pct+'%';
+  book.progress = pct;
+  book.lastCh   = chIdx;
+  book.lastS    = sIdx;
+  dbPut(book);
+  // Update spine
+  const sp = document.querySelector(`.book-spine[data-id="${book.id}"] .spine-progress-fill`);
+  if (sp) sp.style.width = pct+'%';
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // SPEECH
-// ═══════════════════════════════════════════════
-let currentUtterance = null;
+// ═══════════════════════════════════════════════════
+let utt = null;
 
 function speak(text) {
-  stopSpeech();
+  window.speechSynthesis.cancel();
   if (!text) return;
-
-  currentUtterance = new SpeechSynthesisUtterance(text);
-  currentUtterance.rate = speechRate;
-
-  if (selectedVoice) currentUtterance.voice = selectedVoice;
-
-  currentUtterance.onend = () => {
-    advanceSentence();
-  };
-
-  currentUtterance.onerror = (e) => {
-    if (e.error !== 'interrupted') advanceSentence();
-  };
-
-  window.speechSynthesis.speak(currentUtterance);
-  isPlaying = true;
-  updatePlayPauseUI();
+  utt = new SpeechSynthesisUtterance(text);
+  utt.rate = rate;
+  if (selVoice) utt.voice = selVoice;
+  utt.onend = () => { if (playing) doAdvance(); };
+  utt.onerror = e => { if (e.error !== 'interrupted' && playing) doAdvance(); };
+  window.speechSynthesis.speak(utt);
 }
 
 function stopSpeech() {
   window.speechSynthesis.cancel();
-  isPlaying = false;
-  updatePlayPauseUI();
+  playing = false;
+  updatePlayUI();
 }
 
-function pauseSpeech() {
-  window.speechSynthesis.pause();
-  isPlaying = false;
-  updatePlayPauseUI();
-}
-
-function resumeSpeech() {
-  window.speechSynthesis.resume();
-  isPlaying = true;
-  updatePlayPauseUI();
-}
-
-function playCurrentSentence() {
-  const sentence = sentences[currentSentenceIndex];
-  if (sentence) speak(sentence);
-}
-
-function advanceSentence() {
-  if (currentSentenceIndex < sentences.length - 1) {
-    currentSentenceIndex++;
-    highlightCurrentSentence();
-    updateProgress();
-    if (isPlaying) playCurrentSentence();
+function togglePlay() {
+  if (window.speechSynthesis.paused) {
+    window.speechSynthesis.resume();
+    playing = true;
+  } else if (playing) {
+    window.speechSynthesis.pause();
+    playing = false;
   } else {
-    // Next chapter
-    if (currentChapterIndex < currentBook.chapters.length - 1) {
-      loadChapter(currentChapterIndex + 1, 0);
-      if (isPlaying) playCurrentSentence();
-    } else {
-      stopSpeech();
-      showToast('End of book reached');
-    }
+    playing = true;
+    speak(sentences[sIdx]);
+  }
+  updatePlayUI();
+}
+
+function updatePlayUI() {
+  document.getElementById('ico-play').style.display  = playing ? 'none'  : 'block';
+  document.getElementById('ico-pause').style.display = playing ? 'block' : 'none';
+}
+
+function doAdvance() {
+  if (sIdx < sentences.length-1) {
+    sIdx++;
+    highlightReading();
+    scrollToReading();
+    updateProgress();
+    if (playing) speak(sentences[sIdx]);
+  } else if (chIdx < book.chapters.length-1) {
+    loadChapter(chIdx+1, 0);
+    if (playing) speak(sentences[0]);
+  } else {
+    stopSpeech();
+    toast('End of book reached');
   }
 }
 
-function updatePlayPauseUI() {
-  const pi = document.getElementById('play-icon');
-  const pau = document.getElementById('pause-icon');
-  if (isPlaying) { pi.style.display = 'none'; pau.style.display = 'block'; }
-  else { pi.style.display = 'block'; pau.style.display = 'none'; }
+function prevSentence() {
+  if (sIdx > 0) {
+    sIdx--;
+    highlightReading();
+    scrollToReading();
+    updateProgress();
+    if (playing) { window.speechSynthesis.cancel(); speak(sentences[sIdx]); }
+  }
 }
 
-function updateSpeedDisplay() {
-  document.getElementById('speed-display').textContent = speechRate.toFixed(1).replace('.0','') + '×';
+function nextSentence() {
+  window.speechSynthesis.cancel();
+  doAdvance();
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// SPEED
+// ═══════════════════════════════════════════════════
+function changeSpeed(dir) {
+  const cur = SPEEDS.findIndex(s=>s>=rate);
+  const ni  = Math.max(0, Math.min(SPEEDS.length-1, cur+dir));
+  rate = SPEEDS[ni];
+  updateSpeedLabel();
+  if (book) { book.lastRate=rate; dbPut(book); }
+  if (playing) { window.speechSynthesis.cancel(); speak(sentences[sIdx]); }
+}
+function updateSpeedLabel() {
+  document.getElementById('speed-lbl').textContent = (rate%1===0?rate:rate.toFixed(2).replace(/\.?0+$/,''))+'×';
+}
+
+// ═══════════════════════════════════════════════════
 // VOICES
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// Keywords that indicate neural/online quality
+const NEURAL_KEYWORDS = ['online','neural','siri','google','natural','enhanced','premium','aria','guy','zira','david','samantha','alex','daniel','karen','moira','fiona','ava','allison','susan','tom','rishi','veena','neel','tessa'];
+
+function isNeural(v) {
+  const n = v.name.toLowerCase();
+  return NEURAL_KEYWORDS.some(k => n.includes(k));
+}
+
 function loadVoices() {
   voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return;
+
   const sel = document.getElementById('voice-select');
+  const saved = book?.lastVoice || '';
   sel.innerHTML = '';
 
-  if (voices.length === 0) {
-    const opt = document.createElement('option');
-    opt.textContent = 'Default voice';
-    sel.appendChild(opt);
-    return;
-  }
-
-  // Sort: natural-sounding first
-  const preferred = ['Samantha','Alex','Daniel','Karen','Moira','Fiona','Aria','Guy','Zira','David','Google US English','Google UK English Female'];
-  const sorted = [...voices].sort((a, b) => {
-    const ai = preferred.findIndex(p => a.name.includes(p));
-    const bi = preferred.findIndex(p => b.name.includes(p));
-    if (ai === -1 && bi === -1) return a.name.localeCompare(b.name);
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
+  // Sort: neural first, then alphabetical
+  const sorted = [...voices].sort((a,b) => {
+    const an = isNeural(a), bn = isNeural(b);
+    if (an && !bn) return -1;
+    if (!an && bn) return 1;
+    return a.name.localeCompare(b.name);
   });
 
+  // Group separator tracking
+  let lastNeural = true;
   sorted.forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v.name;
-    opt.textContent = `${v.name} (${v.lang})`;
-    sel.appendChild(opt);
+    const neural = isNeural(v);
+    if (lastNeural && !neural) {
+      const sep = document.createElement('option');
+      sep.disabled = true;
+      sep.textContent = '── Standard voices ──';
+      sel.appendChild(sep);
+    }
+    lastNeural = neural;
+    const o = document.createElement('option');
+    o.value = v.name;
+    o.textContent = (neural ? '★ ' : '') + v.name + ' (' + v.lang + ')';
+    sel.appendChild(o);
   });
 
-  // Restore saved voice
-  if (currentBook?.lastVoice) {
-    sel.value = currentBook.lastVoice;
-    selectedVoice = voices.find(v => v.name === currentBook.lastVoice) || null;
-  }
-
-  if (!selectedVoice && sorted.length > 0) {
-    selectedVoice = sorted[0];
-    sel.value = sorted[0].name;
+  // Restore or pick best
+  if (saved && sorted.find(v=>v.name===saved)) {
+    sel.value = saved;
+    selVoice = sorted.find(v=>v.name===saved);
+  } else {
+    const best = sorted.find(v=>isNeural(v)) || sorted[0];
+    if (best) { sel.value = best.name; selVoice = best; }
   }
 }
 
-// ═══════════════════════════════════════════════
+function voiceChanged() {
+  const name = document.getElementById('voice-select').value;
+  selVoice = voices.find(v=>v.name===name) || null;
+  if (book) { book.lastVoice=name; dbPut(book); }
+  if (playing) { window.speechSynthesis.cancel(); speak(sentences[sIdx]); }
+}
+
+// ═══════════════════════════════════════════════════
 // SEARCH
-// ═══════════════════════════════════════════════
-function doSearch(query) {
-  const resultsEl = document.getElementById('search-results');
-  const countEl = document.getElementById('search-count');
-  currentSearchResults = [];
-  currentSearchMatch = 0;
+// ═══════════════════════════════════════════════════
+function toggleSearch() {
+  const panel = document.getElementById('search-panel');
+  const btn   = document.getElementById('search-btn');
+  const open  = panel.classList.toggle('open');
+  btn.classList.toggle('active', open);
+  if (open) document.getElementById('search-input').focus();
+}
 
-  // Clear previous search highlights
-  clearSearchHighlights();
+function doSearch(q) {
+  const list = document.getElementById('search-list');
+  const meta = document.getElementById('search-meta');
+  searchResults = [];
+  list.innerHTML = '';
 
-  if (!query || query.length < 2) {
-    resultsEl.innerHTML = '';
-    countEl.textContent = '';
-    return;
-  }
+  if (!q || q.length<2) { meta.textContent=''; return; }
+  const lower = q.toLowerCase();
 
-  const lower = query.toLowerCase();
-  const results = [];
+  book.chapters.forEach((ch, ci) => {
+    const sents = splitSentences(ch.text);
+    sents.forEach((s, si) => {
+      if (!s.toLowerCase().includes(lower)) return;
+      const mi = s.toLowerCase().indexOf(lower);
+      const start = Math.max(0, mi-55);
+      const end   = Math.min(s.length, mi+q.length+55);
+      let snip = (start>0?'…':'')+s.slice(start,end)+(end<s.length?'…':'');
+      const sl = snip.toLowerCase();
+      const hi = sl.indexOf(lower);
+      if (hi!==-1) snip = snip.slice(0,hi)+'<mark>'+snip.slice(hi,hi+q.length)+'</mark>'+snip.slice(hi+q.length);
+      searchResults.push({ ci, si, chTitle:ch.title, snip });
+    });
+  });
 
-  currentBook.chapters.forEach((ch, chIdx) => {
-    const text = ch.text;
-    const sentences = splitSentences(text);
-    sentences.forEach((s, sIdx) => {
-      if (s.toLowerCase().includes(lower)) {
-        // Build snippet with highlight
-        const matchIdx = s.toLowerCase().indexOf(lower);
-        const start = Math.max(0, matchIdx - 60);
-        const end = Math.min(s.length, matchIdx + query.length + 60);
-        let snippet = (start > 0 ? '…' : '') + s.slice(start, end) + (end < s.length ? '…' : '');
-        const snippetLower = snippet.toLowerCase();
-        const hi = snippetLower.indexOf(lower);
-        if (hi !== -1) {
-          snippet = snippet.slice(0, hi) + '<mark>' + snippet.slice(hi, hi + query.length) + '</mark>' + snippet.slice(hi + query.length);
-        }
-        results.push({ chIdx, sIdx, chTitle: ch.title, snippet, sentence: s });
+  meta.textContent = searchResults.length ? `${searchResults.length} result${searchResults.length!==1?'s':''}` : 'No results';
+
+  searchResults.forEach((r,i) => {
+    const el = document.createElement('div');
+    el.className = 'search-item';
+    el.innerHTML = `<div class="si-chapter">${r.chTitle.slice(0,38)}</div><div class="si-snippet">${r.snip}</div>`;
+    el.addEventListener('click', () => {
+      list.querySelectorAll('.search-item').forEach((e,j)=>e.classList.toggle('active',j===i));
+      if (r.ci !== chIdx) {
+        loadChapter(r.ci, r.si);
+      } else {
+        sIdx = r.si;
+        highlightReading();
+        scrollToReading();
+        updateProgress();
       }
     });
-  });
-
-  currentSearchResults = results;
-  countEl.textContent = results.length === 0 ? 'No results' : `${results.length} result${results.length !== 1 ? 's' : ''}`;
-
-  resultsEl.innerHTML = '';
-  results.forEach((r, i) => {
-    const item = document.createElement('div');
-    item.className = 'search-result-item';
-    item.innerHTML = `
-      <div class="result-chapter">${r.chTitle.slice(0,40)}</div>
-      <div class="result-snippet">${r.snippet}</div>
-    `;
-    item.addEventListener('click', () => {
-      jumpToResult(i);
-    });
-    resultsEl.appendChild(item);
+    list.appendChild(el);
   });
 }
 
-function jumpToResult(idx) {
-  const r = currentSearchResults[idx];
-  if (!r) return;
-
-  // Update active item
-  document.querySelectorAll('.search-result-item').forEach((el, i) => {
-    el.classList.toggle('active', i === idx);
-  });
-  currentSearchMatch = idx;
-
-  // Load chapter if needed
-  if (r.chIdx !== currentChapterIndex) {
-    loadChapter(r.chIdx, r.sIdx);
-  } else {
-    currentSentenceIndex = r.sIdx;
-    highlightCurrentSentence();
-    updateProgress();
-  }
+// ═══════════════════════════════════════════════════
+// PROGRESS SEEK
+// ═══════════════════════════════════════════════════
+function seekProgress(e) {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct  = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+  sIdx = Math.floor(pct * sentences.length);
+  highlightReading();
+  scrollToReading();
+  updateProgress();
+  if (playing) { window.speechSynthesis.cancel(); speak(sentences[sIdx]); }
 }
 
-function clearSearchHighlights() {
-  const content = document.getElementById('reader-content');
-  content.querySelectorAll('.highlight-search').forEach(el => {
-    const parent = el.parentNode;
-    parent.replaceChild(document.createTextNode(el.textContent), el);
-    parent.normalize();
-  });
+// ═══════════════════════════════════════════════════
+// DOCK HOVER
+// ═══════════════════════════════════════════════════
+let dockTimer = null;
+function showDock() {
+  clearTimeout(dockTimer);
+  document.getElementById('dock').classList.add('visible');
+}
+function hideDock() {
+  dockTimer = setTimeout(() => {
+    document.getElementById('dock').classList.remove('visible');
+  }, 400);
 }
 
-// ═══════════════════════════════════════════════
-// EVENT LISTENERS
-// ═══════════════════════════════════════════════
-document.getElementById('file-input').addEventListener('change', e => {
-  handleFiles(Array.from(e.target.files));
-  e.target.value = '';
+document.getElementById('dock-trigger').addEventListener('mouseenter', showDock);
+document.getElementById('dock').addEventListener('mouseenter', showDock);
+document.getElementById('dock').addEventListener('mouseleave', hideDock);
+document.getElementById('dock-trigger').addEventListener('mouseleave', hideDock);
+
+// Also show dock when hovering near bottom 60px of screen
+document.addEventListener('mousemove', e => {
+  if (document.body.classList.contains('in-library')) return;
+  if (e.clientY > window.innerHeight - 80) showDock();
 });
 
-document.getElementById('upload-zone').addEventListener('click', () => {
-  document.getElementById('file-input').click();
-});
+// ═══════════════════════════════════════════════════
+// VOICE GUIDE
+// ═══════════════════════════════════════════════════
+function toggleVoiceGuide() {
+  document.getElementById('voice-guide').classList.toggle('show');
+}
 
-document.getElementById('upload-zone').addEventListener('dragover', e => {
-  e.preventDefault();
-  e.currentTarget.classList.add('drag-over');
-});
-
-document.getElementById('upload-zone').addEventListener('dragleave', e => {
-  e.currentTarget.classList.remove('drag-over');
-});
-
-document.getElementById('upload-zone').addEventListener('drop', e => {
-  e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-  handleFiles(Array.from(e.dataTransfer.files));
-});
-
-document.getElementById('back-to-library').addEventListener('click', () => {
-  stopSpeech();
-  showView('library-view');
+// ═══════════════════════════════════════════════════
+// CONTEXT MENU
+// ═══════════════════════════════════════════════════
+function showCtx(x, y, id) {
+  ctxBookId = id;
+  const m = document.getElementById('ctx-menu');
+  m.style.left = x+'px'; m.style.top = y+'px';
+  m.classList.add('show');
+}
+function hideCtx() { document.getElementById('ctx-menu').classList.remove('show'); ctxBookId=null; }
+function ctxOpen()   { if(ctxBookId) openBook(ctxBookId); hideCtx(); }
+async function ctxDelete() {
+  if (!ctxBookId) return;
+  const b = books.find(b=>b.id===ctxBookId);
+  await dbDel(ctxBookId);
+  books = books.filter(b=>b.id!==ctxBookId);
   renderLibrary();
+  hideCtx();
+  toast(`"${b?.title}" removed`);
+}
+document.addEventListener('click', e => {
+  if (!document.getElementById('ctx-menu').contains(e.target)) hideCtx();
 });
+
+// ═══════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════
+document.getElementById('file-input').addEventListener('change', e => {
+  handleFiles(e.target.files); e.target.value='';
+});
+
+const uz = document.getElementById('upload-zone');
+uz.addEventListener('click', ()=>document.getElementById('file-input').click());
+uz.addEventListener('dragover', e=>{ e.preventDefault(); uz.classList.add('drag-over'); });
+uz.addEventListener('dragleave', ()=>uz.classList.remove('drag-over'));
+uz.addEventListener('drop', e=>{ e.preventDefault(); uz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
 
 document.getElementById('chapter-select').addEventListener('change', e => {
   loadChapter(parseInt(e.target.value), 0);
 });
 
-// Play/Pause
-document.getElementById('play-pause-btn').addEventListener('click', () => {
-  if (window.speechSynthesis.paused) {
-    resumeSpeech();
-  } else if (isPlaying) {
-    pauseSpeech();
-  } else {
-    isPlaying = true;
-    playCurrentSentence();
-  }
+document.getElementById('reader-scroll').addEventListener('scroll', () => {
+  syncScrollbar();
 });
 
-// Prev/Next sentence
-document.getElementById('prev-sentence-btn').addEventListener('click', () => {
-  if (currentSentenceIndex > 0) {
-    currentSentenceIndex--;
-    highlightCurrentSentence();
-    updateProgress();
-    if (isPlaying) playCurrentSentence();
-  }
+window.addEventListener('resize', () => {
+  if (book) updateScrollbar();
 });
 
-document.getElementById('next-sentence-btn').addEventListener('click', () => {
-  stopSpeech();
-  advanceSentence();
-});
-
-// Speed
-const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
-document.getElementById('speed-up-btn').addEventListener('click', () => {
-  const idx = speeds.findIndex(s => s >= speechRate);
-  const next = speeds[Math.min(idx + 1, speeds.length - 1)];
-  speechRate = next;
-  if (currentUtterance) currentUtterance.rate = speechRate;
-  updateSpeedDisplay();
-  if (currentBook) { currentBook.lastSpeed = speechRate; dbPut('books', currentBook); }
-  if (isPlaying) { stopSpeech(); isPlaying = true; playCurrentSentence(); }
-});
-
-document.getElementById('speed-down-btn').addEventListener('click', () => {
-  const idx = speeds.findIndex(s => s >= speechRate);
-  const prev = speeds[Math.max(idx - 1, 0)];
-  speechRate = prev;
-  updateSpeedDisplay();
-  if (currentBook) { currentBook.lastSpeed = speechRate; dbPut('books', currentBook); }
-  if (isPlaying) { stopSpeech(); isPlaying = true; playCurrentSentence(); }
-});
-
-// Voice
-document.getElementById('voice-select').addEventListener('change', e => {
-  const voiceName = e.target.value;
-  selectedVoice = voices.find(v => v.name === voiceName) || null;
-  if (currentBook) { currentBook.lastVoice = voiceName; dbPut('books', currentBook); }
-  if (isPlaying) { stopSpeech(); isPlaying = true; playCurrentSentence(); }
-});
-
-// Speech synthesis voices loaded
-window.speechSynthesis.onvoiceschanged = loadVoices;
-
-// Search toggle
-document.getElementById('search-toggle-btn').addEventListener('click', () => {
-  const panel = document.getElementById('search-panel');
-  const btn = document.getElementById('search-toggle-btn');
-  const collapsed = panel.classList.toggle('collapsed');
-  btn.classList.toggle('active', !collapsed);
-  if (!collapsed) document.getElementById('search-input').focus();
-});
-
-// Search input
 document.getElementById('search-input').addEventListener('input', e => {
   const q = e.target.value;
-  document.getElementById('search-clear').classList.toggle('visible', q.length > 0);
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(() => doSearch(q), 200);
+  document.getElementById('search-x').classList.toggle('show', q.length>0);
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => doSearch(q), 180);
 });
 
-document.getElementById('search-clear').addEventListener('click', () => {
-  document.getElementById('search-input').value = '';
-  document.getElementById('search-clear').classList.remove('visible');
+document.getElementById('search-x').addEventListener('click', () => {
+  document.getElementById('search-input').value='';
+  document.getElementById('search-x').classList.remove('show');
   doSearch('');
-});
-
-// Context menu
-document.getElementById('menu-open').addEventListener('click', () => {
-  if (contextMenuBookId) openBook(contextMenuBookId);
-  hideContextMenu();
-});
-
-document.getElementById('menu-delete').addEventListener('click', async () => {
-  if (!contextMenuBookId) return;
-  const bookTitle = books.find(b => b.id === contextMenuBookId)?.title;
-  await dbDelete('books', contextMenuBookId);
-  books = books.filter(b => b.id !== contextMenuBookId);
-  renderLibrary();
-  hideContextMenu();
-  showToast(`"${bookTitle}" removed`);
-});
-
-document.addEventListener('click', (e) => {
-  if (!document.getElementById('book-menu').contains(e.target)) {
-    hideContextMenu();
-  }
-});
-
-// Progress bar click
-document.getElementById('progress-track').addEventListener('click', e => {
-  const rect = e.currentTarget.getBoundingClientRect();
-  const pct = (e.clientX - rect.left) / rect.width;
-  const target = Math.floor(pct * sentences.length);
-  currentSentenceIndex = Math.max(0, Math.min(target, sentences.length - 1));
-  highlightCurrentSentence();
-  updateProgress();
-  if (isPlaying) { stopSpeech(); isPlaying = true; playCurrentSentence(); }
 });
 
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-  if (!currentBook) return;
-  if (e.code === 'Space') {
-    e.preventDefault();
-    document.getElementById('play-pause-btn').click();
-  } else if (e.code === 'ArrowRight') {
-    document.getElementById('next-sentence-btn').click();
-  } else if (e.code === 'ArrowLeft') {
-    document.getElementById('prev-sentence-btn').click();
-  }
+  if (e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA') return;
+  if (!book) return;
+  if (e.code==='Space')       { e.preventDefault(); togglePlay(); }
+  if (e.code==='ArrowRight')  nextSentence();
+  if (e.code==='ArrowLeft')   prevSentence();
 });
 
-// ═══════════════════════════════════════════════
+// Voice loading
+window.speechSynthesis.onvoiceschanged = loadVoices;
+
+// ═══════════════════════════════════════════════════
 // INIT
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 async function init() {
   await openDB();
-  books = await dbGetAll('books');
-  books.sort((a, b) => b.addedAt - a.addedAt);
+  books = await dbAll();
+  books.sort((a,b)=>b.addedAt-a.addedAt);
   renderLibrary();
-  loadVoices();
-  // Some browsers need a delay for voices
-  setTimeout(loadVoices, 500);
+  setTimeout(loadVoices, 300);
 }
 
 init();
