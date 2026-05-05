@@ -425,6 +425,174 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
   background: var(--amber); border: 2px solid var(--amber-dark); cursor: pointer;
 }
 
+
+/* ── SUMMARY PANEL (choice window) ── */
+.summary-choice {
+  position: fixed;
+  bottom: 76px; left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  width: 280px;
+  background: rgba(14,9,2,0.97);
+  border: 1px solid rgba(200,144,42,0.28);
+  border-radius: 10px;
+  padding: 18px 20px;
+  box-shadow: 0 -4px 32px rgba(0,0,0,0.7);
+  backdrop-filter: blur(14px);
+  z-index: 500;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.summary-choice.show {
+  opacity: 1; pointer-events: all;
+  transform: translateX(-50%) translateY(0);
+}
+.summary-choice-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.9rem; color: var(--amber-light);
+  margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sum-close-btn {
+  background: none; border: none; color: rgba(200,144,42,0.4);
+  cursor: pointer; font-size: 1rem; line-height: 1;
+}
+.sum-close-btn:hover { color: var(--amber-light); }
+.summary-opt {
+  width: 100%; padding: 11px 14px;
+  background: rgba(200,144,42,0.06);
+  border: 1px solid rgba(200,144,42,0.15);
+  border-radius: 5px; cursor: pointer;
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.95rem; color: var(--paper);
+  text-align: left; margin-bottom: 8px;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 10px;
+}
+.summary-opt:last-child { margin-bottom: 0; }
+.summary-opt:hover { background: rgba(200,144,42,0.14); border-color: var(--amber); }
+.summary-opt-icon { font-size: 1.1rem; }
+.summary-opt-text { display: flex; flex-direction: column; }
+.summary-opt-label { font-size: 0.92rem; color: var(--paper); }
+.summary-opt-sub { font-size: 0.75rem; color: var(--paper-dark); font-style: italic; margin-top: 2px; }
+
+/* ── AI FLOATING WINDOW (draggable) ── */
+.ai-window {
+  position: fixed;
+  top: 120px; left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, 92vw);
+  background: #0f0a04;
+  border: 1px solid rgba(200,144,42,0.3);
+  border-radius: 10px;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.8);
+  z-index: 600;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+.ai-window.show { display: flex; }
+
+.ai-window-header {
+  padding: 12px 16px;
+  background: rgba(200,144,42,0.07);
+  border-bottom: 1px solid rgba(200,144,42,0.15);
+  display: flex; align-items: center; gap: 10px;
+  cursor: grab;
+  flex-shrink: 0;
+}
+.ai-window-header:active { cursor: grabbing; }
+.ai-window-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.92rem; color: var(--amber-light);
+  flex: 1; font-style: italic;
+}
+.ai-window-close {
+  background: none; border: none;
+  color: rgba(200,144,42,0.45); cursor: pointer;
+  font-size: 1rem; line-height: 1; padding: 2px 4px;
+  transition: color 0.15s; flex-shrink: 0;
+}
+.ai-window-close:hover { color: var(--amber-light); }
+
+.ai-window-body { padding: 16px 18px; flex: 1; display: flex; flex-direction: column; gap: 12px; }
+
+.ai-mode-label {
+  font-size: 0.72rem; color: rgba(200,144,42,0.5);
+  text-transform: uppercase; letter-spacing: 0.09em;
+}
+.ai-textarea {
+  width: 100%; min-height: 80px; resize: vertical;
+  background: rgba(200,144,42,0.06);
+  border: 1px solid rgba(200,144,42,0.2);
+  border-radius: 4px; color: var(--paper);
+  font-family: 'Crimson Pro', serif; font-size: 0.95rem;
+  padding: 10px 12px; outline: none; line-height: 1.5;
+  transition: border-color 0.15s;
+}
+.ai-textarea:focus { border-color: var(--amber); }
+.ai-textarea::placeholder { color: rgba(200,144,42,0.28); font-style: italic; }
+.ai-send-btn {
+  align-self: flex-end;
+  background: var(--amber-dark); border: 1px solid var(--amber);
+  color: var(--paper); font-family: 'Crimson Pro', serif;
+  font-size: 0.9rem; padding: 8px 20px; border-radius: 4px;
+  cursor: pointer; transition: all 0.15s;
+}
+.ai-send-btn:hover { background: var(--amber); }
+.ai-send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.ai-response {
+  min-height: 60px; max-height: 260px;
+  overflow-y: auto; padding: 12px 14px;
+  background: rgba(200,144,42,0.04);
+  border: 1px solid rgba(200,144,42,0.1);
+  border-radius: 4px;
+  font-size: 0.92rem; color: var(--paper-dark);
+  line-height: 1.7; display: none;
+}
+.ai-response.show { display: block; }
+.ai-response::-webkit-scrollbar { width: 3px; }
+.ai-response::-webkit-scrollbar-thumb { background: rgba(200,144,42,0.2); border-radius: 2px; }
+.ai-thinking {
+  color: rgba(200,144,42,0.45); font-style: italic;
+  font-size: 0.88rem; display: flex; align-items: center; gap: 8px;
+}
+.ai-thinking-dots span {
+  display: inline-block; width: 4px; height: 4px;
+  border-radius: 50%; background: var(--amber);
+  animation: ai-dot 1.2s ease-in-out infinite;
+  margin: 0 1px;
+}
+.ai-thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.ai-thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes ai-dot { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+.ai-apikey-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px;
+  background: rgba(200,144,42,0.04);
+  border: 1px solid rgba(200,144,42,0.12);
+  border-radius: 4px;
+}
+.ai-apikey-row input {
+  flex: 1; background: none; border: none;
+  color: var(--paper); font-family: 'Crimson Pro', serif;
+  font-size: 0.88rem; outline: none;
+}
+.ai-apikey-row input::placeholder { color: rgba(200,144,42,0.28); font-style: italic; }
+.ai-apikey-save {
+  background: rgba(200,144,42,0.1); border: 1px solid rgba(200,144,42,0.25);
+  color: var(--amber-light); font-family: 'Crimson Pro', serif;
+  font-size: 0.82rem; padding: 4px 10px; border-radius: 3px;
+  cursor: pointer; white-space: nowrap; transition: all 0.15s;
+}
+.ai-apikey-save:hover { background: rgba(200,144,42,0.2); }
+.ai-apikey-hint {
+  font-size: 0.72rem; color: rgba(200,144,42,0.35);
+  font-style: italic; margin-top: -4px;
+}
+
 @media(max-width:680px){
   .reader-scroll{padding:36px 56px}
   .dock-voice-wrap,.dock-pitch-wrap{display:none}
@@ -706,8 +874,55 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5.5" cy="5.5" r="4"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5"/></svg>
     Search
   </button>
+
+  <button class="dock-icon-btn" id="summary-btn" onclick="toggleSummaryChoice()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h9M2 6h7M2 9h5" stroke-linecap="round"/><circle cx="11" cy="9.5" r="1.8" fill="none" stroke-width="1.3"/><line x1="12.3" y1="10.8" x2="13" y2="11.5" stroke-linecap="round"/></svg>
+    Summary
+  </button>
 </div>
 </div>
+</div>
+
+
+<!-- SUMMARY CHOICE PANEL -->
+<div class="summary-choice" id="summary-choice">
+  <div class="summary-choice-title">
+    ✦ AI Summary
+    <button class="sum-close-btn" onclick="closeSummaryChoice()">✕</button>
+  </div>
+  <button class="summary-opt" onclick="openAiWindow('chapter')">
+    <span class="summary-opt-icon">📖</span>
+    <span class="summary-opt-text">
+      <span class="summary-opt-label">Summarize Chapter</span>
+      <span class="summary-opt-sub">Quick overview of the current chapter</span>
+    </span>
+  </button>
+  <button class="summary-opt" onclick="openAiWindow('request')">
+    <span class="summary-opt-icon">✦</span>
+    <span class="summary-opt-text">
+      <span class="summary-opt-label">Summary Request</span>
+      <span class="summary-opt-sub">Ask anything about the book</span>
+    </span>
+  </button>
+</div>
+
+<!-- AI FLOATING WINDOW -->
+<div class="ai-window" id="ai-window">
+  <div class="ai-window-header" id="ai-window-header">
+    <span class="ai-window-title" id="ai-window-title">✦ AI Summary</span>
+    <button class="ai-window-close" onclick="closeAiWindow()">✕</button>
+  </div>
+  <div class="ai-window-body">
+    <div class="ai-apikey-row" id="ai-apikey-row">
+      <input type="password" id="ai-apikey-input" placeholder="Paste Gemini API key…">
+      <button class="ai-apikey-save" onclick="saveApiKey()">Save</button>
+    </div>
+    <div class="ai-apikey-hint" id="ai-apikey-hint">Get a free key at aistudio.google.com — stored locally only</div>
+    <div class="ai-mode-label" id="ai-mode-label">YOUR REQUEST</div>
+    <textarea class="ai-textarea" id="ai-textarea" placeholder="Ask anything about the book…" rows="3"></textarea>
+    <button class="ai-send-btn" id="ai-send-btn" onclick="sendAiRequest()">Ask Gemini →</button>
+    <div class="ai-response" id="ai-response"></div>
+  </div>
 </div>
 
 <!-- AMBIENT POPUP -->
@@ -1790,6 +2005,177 @@ function restoreBrightness() {
   setBrightness(val);
 }
 
+
+// ═══════════════════════════════════════════
+// AI SUMMARY
+// ═══════════════════════════════════════════
+const WORKER_URL = 'https://personallibrary-proxy.sotempyhehe.workers.dev';
+let aiMode = 'request'; // 'chapter' or 'request'
+let geminiApiKey = '';
+
+function loadApiKey() {
+  geminiApiKey = localStorage.getItem('pl_gemini_key') || '';
+  if (geminiApiKey) {
+    document.getElementById('ai-apikey-input').value = '••••••••••••••••';
+    document.getElementById('ai-apikey-row').style.opacity = '0.5';
+    document.getElementById('ai-apikey-hint').textContent = 'API key saved locally ✓  Click to change';
+  }
+}
+
+function saveApiKey() {
+  const val = document.getElementById('ai-apikey-input').value.trim();
+  if (!val || val.startsWith('•')) return;
+  geminiApiKey = val;
+  localStorage.setItem('pl_gemini_key', val);
+  document.getElementById('ai-apikey-input').value = '••••••••••••••••';
+  document.getElementById('ai-apikey-row').style.opacity = '0.5';
+  document.getElementById('ai-apikey-hint').textContent = 'API key saved locally ✓  Click to change';
+  toast('API key saved');
+}
+
+document.getElementById('ai-apikey-row').addEventListener('click', () => {
+  const inp = document.getElementById('ai-apikey-input');
+  inp.value = '';
+  document.getElementById('ai-apikey-row').style.opacity = '1';
+});
+
+function toggleSummaryChoice() {
+  const panel = document.getElementById('summary-choice');
+  const btn   = document.getElementById('summary-btn');
+  const show  = panel.classList.toggle('show');
+  btn.classList.toggle('active', show);
+}
+
+function closeSummaryChoice() {
+  document.getElementById('summary-choice').classList.remove('show');
+  document.getElementById('summary-btn').classList.remove('active');
+}
+
+function openAiWindow(mode) {
+  closeSummaryChoice();
+  aiMode = mode;
+  const win     = document.getElementById('ai-window');
+  const title   = document.getElementById('ai-window-title');
+  const label   = document.getElementById('ai-mode-label');
+  const textarea= document.getElementById('ai-textarea');
+  const resp    = document.getElementById('ai-response');
+
+  resp.classList.remove('show');
+  resp.innerHTML = '';
+
+  if (mode === 'chapter') {
+    title.textContent   = '📖 Summarize Chapter';
+    label.textContent   = 'SUMMARIZING: ' + (book?.chapters[chIdx]?.title || 'Current Chapter').toUpperCase();
+    textarea.style.display = 'none';
+    document.getElementById('ai-send-btn').textContent = 'Summarize →';
+  } else {
+    title.textContent   = '✦ Summary Request';
+    label.textContent   = 'YOUR REQUEST';
+    textarea.style.display = '';
+    textarea.value      = '';
+    textarea.placeholder= `Ask anything about "${book?.title || 'this book'}"…`;
+    document.getElementById('ai-send-btn').textContent = 'Ask Gemini →';
+    setTimeout(() => textarea.focus(), 50);
+  }
+
+  win.classList.add('show');
+  // Reset position to center
+  win.style.left = '50%';
+  win.style.top  = '120px';
+  win.style.transform = 'translateX(-50%)';
+}
+
+function closeAiWindow() {
+  document.getElementById('ai-window').classList.remove('show');
+}
+
+async function sendAiRequest() {
+  if (!geminiApiKey) { toast('Please enter your Gemini API key first'); return; }
+  if (!book) { toast('No book open'); return; }
+
+  const btn  = document.getElementById('ai-send-btn');
+  const resp = document.getElementById('ai-response');
+
+  let userPrompt = '';
+  if (aiMode === 'chapter') {
+    userPrompt = `Please summarize chapter titled "${book.chapters[chIdx]?.title}" from the book "${book.title}" by ${book.author||'the author'}. Be concise but capture the key events and character moments.`;
+  } else {
+    const q = document.getElementById('ai-textarea').value.trim();
+    if (!q) { toast('Please type your question first'); return; }
+    userPrompt = `Regarding the book "${book.title}" by ${book.author||'the author'}: ${q}`;
+  }
+
+  btn.disabled = true;
+  resp.classList.add('show');
+  resp.innerHTML = '<div class="ai-thinking">Thinking <div class="ai-thinking-dots"><span></span><span></span><span></span></div></div>';
+
+  try {
+    const response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: userPrompt, apiKey: geminiApiKey })
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(err || response.statusText);
+    }
+
+    const data = await response.json();
+    const text = data.text || 'No response received.';
+    // Render with basic markdown-like formatting
+    resp.innerHTML = text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/
+
+/g, '</p><p>')
+      .replace(/
+/g, '<br>');
+    resp.innerHTML = '<p>' + resp.innerHTML + '</p>';
+  } catch(e) {
+    resp.innerHTML = `<span style="color:#ff8888">Error: ${e.message}</span>`;
+  }
+
+  btn.disabled = false;
+}
+
+// ── Draggable AI window ────────────────────
+(function() {
+  let dragging = false, ox = 0, oy = 0;
+  const header = document.getElementById('ai-window-header');
+  const win    = document.getElementById('ai-window');
+
+  header.addEventListener('mousedown', e => {
+    dragging = true;
+    const rect = win.getBoundingClientRect();
+    // Switch from transform-based to absolute positioning
+    win.style.transform = 'none';
+    win.style.left = rect.left + 'px';
+    win.style.top  = rect.top  + 'px';
+    ox = e.clientX - rect.left;
+    oy = e.clientY - rect.top;
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    win.style.left = Math.max(0, e.clientX - ox) + 'px';
+    win.style.top  = Math.max(0, e.clientY - oy) + 'px';
+  });
+
+  document.addEventListener('mouseup', () => { dragging = false; });
+})();
+
+// Close choice panel when clicking outside
+document.addEventListener('click', e => {
+  const choice = document.getElementById('summary-choice');
+  const btn    = document.getElementById('summary-btn');
+  if (choice.classList.contains('show') && !choice.contains(e.target) && !btn.contains(e.target)) {
+    closeSummaryChoice();
+  }
+});
+
 function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.toggle('show'); }
 
 // ═══════════════════════════════════════════
@@ -1838,6 +2224,7 @@ async function init(){
   restoreAppearancePrefs();
   syncVolSliders();
   restoreBrightness();
+  loadApiKey();
 }
 init();
 </script>
