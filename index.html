@@ -213,9 +213,8 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
 .ambient-goto-settings:hover { color:var(--amber-light); }
 
 /* ZZZ BUTTON */
-.zzz-btn { display:flex; align-items:center; gap:5px; background:rgba(200,144,42,0.07); border:1px solid rgba(200,144,42,0.22); color:var(--amber-light); font-family:'Crimson Pro',serif; font-size:0.9rem; padding:6px 10px; border-radius:3px; cursor:pointer; transition:all 0.15s; flex-shrink:0; letter-spacing:0.05em; }
-.zzz-btn:hover { background:rgba(200,144,42,0.15); border-color:var(--amber); }
-.zzz-btn.saved { background:rgba(100,160,100,0.12); border-color:rgba(100,200,100,0.35); color:#8ee8a0; }
+/* zzz uses dock-icon-btn base styles */
+#zzz-btn.saved { background:rgba(100,160,100,0.12); border-color:rgba(100,200,100,0.35); color:#8ee8a0; }
 
 /* MODAL */
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
@@ -595,7 +594,6 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
 
 @media(max-width:680px){
   .reader-scroll{padding:36px 56px}
-  .dock-voice-wrap,.dock-pitch-wrap{display:none}
   .search-panel.open{width:260px}
 }
 </style>
@@ -788,6 +786,39 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
         </div>
       </div>
 
+      <!-- VOICE -->
+      <div class="rsp-section">
+        <div class="rsp-section-title">Voice</div>
+        <div class="rsp-row">
+          <span class="rsp-label">Voice</span>
+          <select class="voice-select" id="voice-select" onchange="voiceChanged()" style="flex:1;max-width:none"></select>
+        </div>
+        <div class="rsp-row" style="margin-top:10px">
+          <span class="rsp-label">Speed</span>
+          <button class="dock-speed-btn" onclick="changeSpeed(-1)">−</button>
+          <span class="speed-label" id="speed-lbl" style="min-width:36px;text-align:center;color:var(--amber-light);font-size:0.88rem">1×</span>
+          <button class="dock-speed-btn" onclick="changeSpeed(1)">+</button>
+        </div>
+        <div class="rsp-row">
+          <span class="rsp-label">Pitch</span>
+          <button class="dock-speed-btn" onclick="changePitch(-1)">−</button>
+          <span class="pitch-label" id="pitch-lbl" style="min-width:36px;text-align:center;color:var(--amber-light);font-size:0.88rem">1.0</span>
+          <button class="dock-speed-btn" onclick="changePitch(1)">+</button>
+        </div>
+      </div>
+
+      <!-- BRIGHTNESS -->
+      <div class="rsp-section">
+        <div class="rsp-section-title">Brightness</div>
+        <div class="rsp-row">
+          <span class="rsp-label">☀ Dim</span>
+          <button class="dock-speed-btn" onclick="changeBrightness(-10)">−</button>
+          <input type="range" class="rsp-slider" id="bright-slider" min="0" max="90" value="0" oninput="setBrightness(this.value)" style="margin:0 6px">
+          <button class="dock-speed-btn" onclick="changeBrightness(10)">+</button>
+          <span class="rsp-val" id="bright-val" style="min-width:34px">0%</span>
+        </div>
+      </div>
+
       <!-- AMBIENT SOUNDS -->
       <div class="rsp-section">
         <div class="rsp-section-title">Ambient Sound</div>
@@ -832,43 +863,7 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
     <div class="dock-info"><span id="prog-pct">0%</span><span id="prog-chapter">—</span></div>
   </div>
 
-  <div class="dock-divider"></div>
-
-  <div class="dock-speed-wrap">
-    <span style="font-size:0.65rem;color:rgba(200,144,42,0.4);text-transform:uppercase;letter-spacing:0.06em">Spd</span>
-    <button class="dock-speed-btn" onclick="changeSpeed(-1)">−</button>
-    <span class="speed-label" id="speed-lbl">1×</span>
-    <button class="dock-speed-btn" onclick="changeSpeed(1)">+</button>
-  </div>
-
-  <div class="dock-pitch-wrap">
-    <span style="font-size:0.65rem;color:rgba(200,144,42,0.4);text-transform:uppercase;letter-spacing:0.06em">Pitch</span>
-    <button class="dock-speed-btn" onclick="changePitch(-1)">−</button>
-    <span class="pitch-label" id="pitch-lbl">1.0</span>
-    <button class="dock-speed-btn" onclick="changePitch(1)">+</button>
-  </div>
-
-  <div class="dock-divider"></div>
-
-  <div class="dock-voice-wrap">
-    <select class="voice-select" id="voice-select" onchange="voiceChanged()"></select>
-  </div>
-
-  <div class="dock-divider"></div>
-
-  <button class="dock-icon-btn" id="ambient-dock-btn" onclick="toggleAmbientPopup()">
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 4.5h2l1.5-3L7 10l2-4.5 1 2.5h2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    Ambient
-  </button>
-
-  <button class="zzz-btn" id="zzz-btn" onclick="handleZzz()" title="Save sleep position">💤</button>
-
-  <div class="dock-divider"></div>
-
-  <div class="dock-bright-wrap">
-    <span class="dock-bright-label">☀ Brightness</span>
-    <input type="range" class="bright-slider" id="bright-slider" min="0" max="90" value="0" oninput="setBrightness(this.value)">
-  </div>
+  <button class="dock-icon-btn" id="zzz-btn" onclick="handleZzz()" title="Save sleep position">ZZZ</button>
 
   <button class="dock-icon-btn" id="search-btn" onclick="toggleSearch()">
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5.5" cy="5.5" r="4"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5"/></svg>
@@ -1989,15 +1984,26 @@ function restoreAppearancePrefs() {
 // ═══════════════════════════════════════════
 // BRIGHTNESS DIMMER
 // ═══════════════════════════════════════════
+function changeBrightness(delta) {
+  const bs = document.getElementById('bright-slider');
+  if (!bs) return;
+  const newVal = Math.max(0, Math.min(90, parseInt(bs.value) + delta));
+  bs.value = newVal;
+  setBrightness(newVal);
+}
+
 function setBrightness(val) {
   const opacity = val / 100;
   document.getElementById('brightness-overlay').style.background = `rgba(0,0,0,${opacity})`;
   localStorage.setItem('pl_brightness', val);
+  const bv = document.getElementById('bright-val');
+  if (bv) bv.textContent = val + '%';
 }
 
 function restoreBrightness() {
   const val = localStorage.getItem('pl_brightness') || '0';
-  document.getElementById('bright-slider').value = val;
+  const bs = document.getElementById('bright-slider');
+  if (bs) bs.value = val;
   setBrightness(val);
 }
 
@@ -2157,10 +2163,19 @@ async function sendAiRequest() {
 
 // Close choice panel when clicking outside
 document.addEventListener('click', e => {
+  // Close summary choice panel
   const choice = document.getElementById('summary-choice');
-  const btn    = document.getElementById('summary-btn');
-  if (choice.classList.contains('show') && !choice.contains(e.target) && !btn.contains(e.target)) {
+  const sBtn   = document.getElementById('summary-btn');
+  if (choice && choice.classList.contains('show') && !choice.contains(e.target) && !sBtn.contains(e.target)) {
     closeSummaryChoice();
+  }
+  // Close search panel if clicking outside it and outside search button
+  const searchPanel = document.getElementById('search-panel');
+  const searchBtn   = document.getElementById('search-btn');
+  if (searchPanel && searchPanel.classList.contains('open')) {
+    if (!searchPanel.contains(e.target) && searchBtn && !searchBtn.contains(e.target)) {
+      toggleSearch();
+    }
   }
 });
 
