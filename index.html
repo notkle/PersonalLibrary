@@ -923,7 +923,12 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
     Ambient
   </button>
 
-  <button class="dock-icon-btn" id="zzz-btn" onclick="handleZzz()" title="Save sleep position">ZZZ</button>
+  <button class="bookmark-btn" id="bookmark-btn" onclick="handleBookmark()" title="Bookmark position">
+    <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 2.5C2 1.67 2.67 1 3.5 1H12.5C13.33 1 14 1.67 14 2.5V18.5L8 15L2 18.5V2.5Z"
+        stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none" id="bookmark-path"/>
+    </svg>
+  </button>
 
   <button class="dock-icon-btn" id="search-btn" onclick="toggleSearch()">
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5.5" cy="5.5" r="4"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5"/></svg>
@@ -1023,14 +1028,15 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-zzz">
-  <div class="modal">
-    <h3>Return to sleep position?</h3>
-    <p id="modal-zzz-msg">Go back to where you last pressed 💤?</p>
-    <div class="modal-btns">
-      <button class="btn btn-ghost" onclick="closeModal('modal-zzz')">Stay here</button>
-      <button class="btn btn-primary" onclick="returnToSleepPos()">Yes, go back</button>
-    </div>
+<div class="bookmark-modal" id="bookmark-modal">
+  <div class="bookmark-modal-header">
+    <span class="bookmark-modal-title">Bookmark</span>
+    <button class="bookmark-modal-x" onclick="closeBookmarkModal()">✕</button>
+  </div>
+  <div class="bookmark-modal-msg" id="bookmark-modal-msg">Move to your saved bookmark?</div>
+  <div class="bookmark-modal-btns">
+    <button class="btn btn-primary" onclick="bookmarkMove()">Move</button>
+    <button class="btn btn-ghost" onclick="bookmarkReset()">Reset</button>
   </div>
 </div>
 
@@ -1661,7 +1667,7 @@ function openBook(id){
   showReaderView();
   loadChapter(chIdx,sIdx);
   loadVoices();
-  updateZzzBtn();
+  updateBookmarkBtn();
 }
 
 function buildSentenceCache(){
@@ -1726,15 +1732,46 @@ function loadChapter(ci,si=0){
 
 function splitSentences(text){
   if(!text) return [];
-  // Normalize
   const t = text
     .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ')
     .replace(/\s+/g,' ').trim();
   if(!t) return [];
-  // Simple split on sentence-ending punctuation
-  // Keep the punctuation attached to the sentence
-  const raw = t.match(/[^.!?]+[.!?]+[\u201d\"'\u2019)]*|[^.!?]+$/g) || [t];
-  return raw.map(s => s.trim()).filter(s => s.length > 2);
+
+  const sentences = [];
+  let start = 0;
+  let inQuote = false;
+  let i = 0;
+
+  while(i < t.length){
+    const ch = t[i];
+    // Track whether we are inside a quotation
+    if(ch === '"' || ch === '\u201c' || ch === '\u201d' || ch === '"'){
+      inQuote = !inQuote;
+    }
+    // Only split on . ! ? when NOT inside a quote
+    if(!inQuote && (ch === '.' || ch === '!' || ch === '?')){
+      // Consume trailing punctuation and closing quotes
+      let end = i;
+      while(end+1 < t.length && '.!?'.includes(t[end+1])) end++;
+      while(end+1 < t.length && (t[end+1]==='"'||t[end+1]==="'"||t[end+1]==='\u201d'||t[end+1]==='\u2019'||t[end+1]===')')) end++;
+      // Only split if followed by space then uppercase, or end of string
+      const after = t[end+1];
+      const afterAfter = t[end+2];
+      const isEnd = !after || after === ' ' && (!afterAfter || afterAfter === afterAfter.toUpperCase() && /[A-Z"\u201c]/.test(afterAfter));
+      if(isEnd){
+        const s = t.slice(start, end+1).trim();
+        if(s.length > 2) sentences.push(s);
+        start = end+1;
+        while(start < t.length && t[start] === ' ') start++;
+        i = start;
+        continue;
+      }
+    }
+    i++;
+  }
+  const last = t.slice(start).trim();
+  if(last.length > 2) sentences.push(last);
+  return sentences.length ? sentences : [t];
 }
 
 function attachClickToJump(){
@@ -1828,25 +1865,19 @@ function highlightReading(){
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
 
-  // Escape the sentence for use in regex
-  const esc = sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // Allow flexible whitespace between words to handle HTML entity differences
-  const pattern = esc.replace(/\s+/g, '[\\s\\S]{0,10}');
+  // Use first 5 plain words as match target — avoids special char/quote regex failures
+  // Strip any leading quote characters for cleaner matching
+  const stripped = sentence.replace(/^[\u201c"'\u2018\s]+/, '').trim();
+  const words = stripped.split(/\s+/).filter(w => /[a-zA-Z0-9]/.test(w)).slice(0, 5);
+  if(!words.length) return;
+  const probe = words.join(' ');
+  const esc = probe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   try {
-    const re = new RegExp('(' + pattern + ')', 'i');
+    const re = new RegExp('(' + esc + '[^<]*)', 'i');
     const newHTML = content.innerHTML.replace(re, '<span class="highlight-reading">$1</span>');
     if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
-  } catch(e) {
-    // Regex failed (special chars) — try plain first-words match
-    const words = sentence.trim().split(/\s+/).slice(0, 6).join(' ');
-    const esc2  = words.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    try {
-      const re2 = new RegExp('(' + esc2 + ')', 'i');
-      const newHTML = content.innerHTML.replace(re2, '<span class="highlight-reading">$1</span>');
-      if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
-    } catch(e2) {}
-  }
+  } catch(e) {}
   _lastHighlightedIdx = sIdx;
 }
 
@@ -2021,35 +2052,54 @@ function voiceChanged(){
 }
 
 // ═══════════════════════════════════════════
-// ZZZ SLEEP POSITION
 // ═══════════════════════════════════════════
-function handleZzz(){
+// BOOKMARK
+// ═══════════════════════════════════════════
+function handleBookmark(){
   if(sleepChIdx===null){
-    // Save position
+    // Save bookmark
     sleepChIdx=chIdx; sleepSIdx=sIdx;
-    toast('💤 Sleep position saved');
-    updateZzzBtn();
+    updateBookmarkBtn();
+    toast('Bookmark saved');
   } else {
-    // Offer to return
-    document.getElementById('modal-zzz-msg').textContent=`Return to where you pressed 💤? (Chapter: "${book.chapters[sleepChIdx]?.title?.slice(0,40)}")`;
-    openModal('modal-zzz');
+    // Show modal
+    const chTitle = book.chapters[sleepChIdx]?.title?.slice(0,40) || '';
+    document.getElementById('bookmark-modal-msg').textContent =
+      `Move to bookmark${chTitle ? ' in "'+chTitle+'"' : ''}?`;
+    openBookmarkModal();
   }
 }
-function returnToSleepPos(){
-  closeModal('modal-zzz');
-  if(sleepChIdx===null) return;
-  const targetCh=sleepChIdx, targetS=sleepSIdx;
-  sleepChIdx=null; sleepSIdx=null;
-  if(targetCh!==chIdx) loadChapter(targetCh,targetS);
-  else { sIdx=targetS; highlightReading(); scrollToReading(); updateProgress(); }
-  if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
-  updateZzzBtn();
-  toast('Returned to sleep position');
+function openBookmarkModal(){
+  const m = document.getElementById('bookmark-modal');
+  m.style.display = 'flex';
+  requestAnimationFrame(() => m.classList.add('show'));
 }
-function updateZzzBtn(){
-  const btn=document.getElementById('zzz-btn');
+function closeBookmarkModal(){
+  const m = document.getElementById('bookmark-modal');
+  m.classList.remove('show');
+  setTimeout(() => { m.style.display = 'none'; }, 180);
+}
+function bookmarkMove(){
+  closeBookmarkModal();
+  if(sleepChIdx===null) return;
+  const tCh=sleepChIdx, tS=sleepSIdx;
+  if(tCh!==chIdx) loadChapter(tCh,tS);
+  else { sIdx=tS; highlightReading(); scrollToReading(); updateProgress(); }
+  if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
+}
+function bookmarkReset(){
+  closeBookmarkModal();
+  sleepChIdx=null; sleepSIdx=null;
+  updateBookmarkBtn();
+  toast('Bookmark cleared');
+}
+function updateBookmarkBtn(){
+  const btn=document.getElementById('bookmark-btn');
+  if(!btn) return;
+  const path=document.getElementById('bookmark-path');
   btn.classList.toggle('saved', sleepChIdx!==null);
-  btn.title=sleepChIdx!==null?'Return to sleep position':'Save sleep position';
+  if(path) path.setAttribute('fill', sleepChIdx!==null ? 'currentColor' : 'none');
+  btn.title=sleepChIdx!==null?'Bookmark saved — click to move or reset':'Set bookmark';
 }
 
 // ═══════════════════════════════════════════
