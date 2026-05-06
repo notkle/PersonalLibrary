@@ -1705,7 +1705,6 @@ function buildSentenceCache(){
 // ═══════════════════════════════════════════
 // LOAD CHAPTER
 // ═══════════════════════════════════════════
-// Maps sentence index -> block element for fast O(1) highlight lookup
 let _sentenceBlockMap = [];
 
 function loadChapter(ci,si=0){
@@ -1720,114 +1719,22 @@ function loadChapter(ci,si=0){
   content.querySelectorAll('script,style').forEach(e=>e.remove());
   _originalChapterHTML = content.innerHTML;
   _lastHighlightedIdx = -1;
-  // Build sentence->block map after render
-  _sentenceBlockMap = buildSentenceBlockMap(content, sentences);
+
   updateScrollbar(); updateProgress(); highlightReading(); scrollToReading();
 }
 
-const BLOCK_TAGS = new Set(['P','DIV','LI','BLOCKQUOTE','SECTION','ARTICLE','TD','DD','FIGURE']);
-
-function getBlockAncestor(node, root){
-  let el = node.nodeType === 3 ? node.parentElement : node;
-  while(el && el !== root){
-    if(BLOCK_TAGS.has(el.nodeName)) return el;
-    el = el.parentElement;
-  }
-  return null;
-}
-
-function buildSentenceBlockMap(content, sents){
-  // Get all text nodes outside headings, joined into a single string
-  // Track which block element each character position belongs to
-  const HEADING = /^H[1-6]$/;
-  const blockRanges = []; // [{start, end, el}]
-  let pos = 0;
-
-  // Walk block elements in order
-  const blocks = Array.from(content.querySelectorAll('p, li, blockquote, td, dd, div:not(:has(p,li,blockquote))'));
-  if(!blocks.length){
-    // Fallback: treat whole content as one block
-    blocks.push(content);
-  }
-
-  // Build a flat text from all blocks, tracking positions
-  let flatText = '';
-  const blockMap = []; // [{start, end, el}]
-
-  for(const block of blocks){
-    // Skip heading children
-    let inH = false;
-    let p = block.parentElement;
-    while(p && p !== content){ if(HEADING.test(p.nodeName)){inH=true;break;} p=p.parentElement; }
-    if(inH || HEADING.test(block.nodeName)) continue;
-
-    const blockText = (block.textContent||'').replace(/\s+/g,' ').trim();
-    if(!blockText) continue;
-    blockMap.push({ start: flatText.length, end: flatText.length + blockText.length, el: block });
-    flatText += blockText + ' ';
-  }
-
-  const flatLower = flatText.toLowerCase();
-  const map = new Array(sents.length).fill(null);
-
-  for(let si=0; si<sents.length; si++){
-    const sNorm = normalizeWS(sents[si]).toLowerCase();
-    if(!sNorm) continue;
-    // Find first few words in flat text
-    const probe = sNorm.split(' ').slice(0,5).join(' ');
-    const idx = flatLower.indexOf(probe);
-    if(idx === -1) continue;
-    // Find which block contains this position
-    for(const bm of blockMap){
-      if(idx >= bm.start && idx < bm.end){
-        map[si] = bm.el;
-        break;
-      }
-    }
-  }
-  return map;
-}
 
 function splitSentences(text){
-  // Normalize whitespace and html entities
-  let t = text
+  if(!text) return [];
+  // Normalize
+  const t = text
     .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ')
     .replace(/\s+/g,' ').trim();
-
-  const sentences = [];
-  // State machine sentence splitter — handles abbreviations, quotes, ellipsis
-  const abbrevs = /\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec|approx|est|vol|no|pp|ed|trans|dept|govt|inc|corp|ltd|co)$/i;
-  let start = 0;
-  let i = 0;
-  while(i < t.length){
-    const ch = t[i];
-    if(ch === '.' || ch === '!' || ch === '?' || ch === '…'){
-      // Look ahead past quotes and spaces
-      let end = i;
-      while(end+1 < t.length && (t[end+1] === '"' || t[end+1] === "'" || t[end+1] === '”' || t[end+1] === '’' || t[end+1] === ')')) end++;
-      const nextChar = t[end+1];
-      const prevWord = t.slice(0,i).match(/\S+$/)?.[0]||'';
-      // Don't split on abbreviations or decimal numbers
-      if(ch==='.' && (abbrevs.test(prevWord) || /^\d+$/.test(prevWord))) { i++; continue; }
-      // Don't split unless followed by space+capital or end of string
-      if(nextChar && nextChar !== ' ' && nextChar !== '\n') { i++; continue; }
-      const afterSpace = t[end+2];
-      if(nextChar===' ' && afterSpace && afterSpace===afterSpace.toLowerCase() && !/[0-9"'“‘(]/.test(afterSpace)) { i++; continue; }
-      const sentence = t.slice(start, end+1).trim();
-      if(sentence.length > 3) sentences.push(sentence);
-      start = end+1;
-      i = end+1;
-      // Skip whitespace
-      while(i < t.length && t[i]===' ') i++;
-      start = i;
-      continue;
-    }
-    i++;
-  }
-  // Remainder
-  const last = t.slice(start).trim();
-  if(last.length > 3) sentences.push(last);
-  return sentences.length ? sentences : [t];
+  if(!t) return [];
+  // Simple split on sentence-ending punctuation
+  // Keep the punctuation attached to the sentence
+  const raw = t.match(/[^.!?]+[.!?]+[\u201d\"'\u2019)]*|[^.!?]+$/g) || [t];
+  return raw.map(s => s.trim()).filter(s => s.length > 2);
 }
 
 function attachClickToJump(){
@@ -1915,13 +1822,30 @@ function highlightReading(){
   const content = document.getElementById('reader-content');
   if(!content) return;
 
-  // Remove previous highlight without full innerHTML restore (much faster)
-  content.querySelectorAll('.highlight-reading').forEach(el => el.classList.remove('highlight-reading'));
+  // Restore clean HTML then inject highlight span around current sentence
+  if(_originalChapterHTML) content.innerHTML = _originalChapterHTML;
 
-  // Look up the pre-built map
-  const blockEl = _sentenceBlockMap[sIdx];
-  if(blockEl && content.contains(blockEl)){
-    blockEl.classList.add('highlight-reading');
+  const sentence = sentences[sIdx];
+  if(!sentence || sentence.length < 2) return;
+
+  // Escape the sentence for use in regex
+  const esc = sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Allow flexible whitespace between words to handle HTML entity differences
+  const pattern = esc.replace(/\s+/g, '[\\s\\S]{0,10}');
+
+  try {
+    const re = new RegExp('(' + pattern + ')', 'i');
+    const newHTML = content.innerHTML.replace(re, '<span class="highlight-reading">$1</span>');
+    if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
+  } catch(e) {
+    // Regex failed (special chars) — try plain first-words match
+    const words = sentence.trim().split(/\s+/).slice(0, 6).join(' ');
+    const esc2  = words.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try {
+      const re2 = new RegExp('(' + esc2 + ')', 'i');
+      const newHTML = content.innerHTML.replace(re2, '<span class="highlight-reading">$1</span>');
+      if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
+    } catch(e2) {}
   }
   _lastHighlightedIdx = sIdx;
 }
