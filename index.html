@@ -1753,6 +1753,34 @@ function renderLibrary(){
   });
 }
 
+function renderBookshelf(){
+  const row   = document.getElementById('bookshelf-row');
+  const empty = document.getElementById('bookshelf-empty');
+  const count = document.getElementById('bookshelf-count');
+  if(!row) return;
+  row.querySelectorAll('.book-spine').forEach(e=>e.remove());
+  if(!books.length){
+    if(empty) empty.style.display='flex';
+    if(count) count.textContent='No books yet';
+    return;
+  }
+  if(empty) empty.style.display='none';
+  if(count) count.textContent=`${books.length} book${books.length!==1?'s':''} in your collection`;
+  books.forEach(b=>{
+    const ci=colorIdx(b.title);
+    const el=document.createElement('div');
+    el.className=`book-spine bc${ci}`;
+    el.dataset.id=b.id;
+    el.innerHTML=`<div class="book-spine-inner"><div class="spine-line"></div><div class="spine-title">${b.title}</div><div class="spine-author">${b.author}</div><div class="spine-line"></div></div><div class="spine-progress"><div class="spine-progress-fill" style="width:${b.progress||0}%"></div></div>`;
+    el.addEventListener('click',()=>{
+      if(deleteMode) toggleBookSelect(b.id);
+      else openBook(b.id);
+    });
+    if(selectedForDelete.has(b.id)) el.classList.add('selected');
+    row.appendChild(el);
+  });
+}
+
 // ═══════════════════════════════════════════
 // OPEN BOOK
 // ═══════════════════════════════════════════
@@ -1841,26 +1869,19 @@ function loadChapter(ci,si=0){
   // Remove superscript/subscript footnote numbers entirely
   content.querySelectorAll('sup,sub').forEach(e=>e.remove());
 
-  // ROOT FIX: Promote fake headings to proper <h2> elements.
-  // Publishers often use <p> with all-caps, bold, or heading-class text
-  // instead of semantic <h> tags. Detect and convert them.
-  content.querySelectorAll('p, div').forEach(el => {
+  // Promote all-caps short paragraphs to h2 (fake headings used by many publishers)
+  content.querySelectorAll('p').forEach(el => {
     const txt = el.textContent.trim();
-    if(!txt || txt.length > 80 || txt.length < 2) return;
-    const style = window.getComputedStyle(el);
-    const isAllCaps = txt === txt.toUpperCase() && /[A-Z]/.test(txt);
-    const isBold = style.fontWeight >= 600 || el.querySelector('b,strong');
-    const hasHeadingClass = /title|heading|chapter|header/i.test(el.className||'');
-    // Only promote if it looks like a standalone title line
-    const looksLikeHeading = (isAllCaps || hasHeadingClass) &&
-      !el.closest('h1,h2,h3,h4,h5,h6') &&
-      el.tagName !== 'H1' && el.tagName !== 'H2' && el.tagName !== 'H3';
-    if(looksLikeHeading){
-      const h = document.createElement('h2');
-      h.innerHTML = el.innerHTML;
-      h.className = el.className;
-      el.replaceWith(h);
-    }
+    if(!txt || txt.length > 60 || txt.length < 2) return;
+    // Must be all uppercase letters (allow spaces, punctuation, apostrophes)
+    const lettersOnly = txt.replace(/[^a-zA-Z]/g,'');
+    if(!lettersOnly || lettersOnly !== lettersOnly.toUpperCase()) return;
+    // Skip if already inside a heading
+    if(el.closest('h1,h2,h3,h4,h5,h6')) return;
+    const h = document.createElement('h3');
+    h.innerHTML = el.innerHTML;
+    h.className = el.className;
+    el.replaceWith(h);
   });
 
   _originalChapterHTML = content.innerHTML;
@@ -1875,13 +1896,7 @@ function loadChapter(ci,si=0){
 
 function splitSentences(text){
   if(!text) return [];
-  const t = text
-    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ')
-    .replace(/\s+/g,' ').trim();
-  if(!t) return [];
-  // Simply split on . ! ? — keep delimiter, ignore quotes entirely
-  const raw = t.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [t];
-  return raw.map(s=>s.trim()).filter(s=>s.length>2);
+  return text.split(/[.!?]+/).map(s=>s.trim()).filter(s=>s.length>2);
 }
 
 function attachClickToJump(){
@@ -1960,16 +1975,12 @@ function highlightReading(){
       // Wrap matching portion in highlight span
       const idx = node.nodeValue.toLowerCase().indexOf(probe);
       // Find end of sentence in this node (up to 200 chars)
-      const endIdx = Math.min(idx + sentence.length + 20, node.nodeValue.length);
+      // Highlight the entire text node that contains this sentence's first word
       const span = document.createElement('span');
       span.className = 'highlight-reading';
-      span.textContent = node.nodeValue.slice(idx, endIdx);
+      span.textContent = node.nodeValue;
       const parent = node.parentNode;
-      const before = document.createTextNode(node.nodeValue.slice(0, idx));
-      const after  = document.createTextNode(node.nodeValue.slice(endIdx));
-      parent.replaceChild(after, node);
-      parent.insertBefore(span, after);
-      parent.insertBefore(before, span);
+      parent.replaceChild(span, node);
       break;
     }
   }
