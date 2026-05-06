@@ -1684,72 +1684,11 @@ function attachClickToJump(){
 // ═══════════════════════════════════════════
 // HIGHLIGHTING
 // ═══════════════════════════════════════════
-function clearHighlight(cls){
-  document.getElementById('reader-content').querySelectorAll('.'+cls).forEach(el=>{
-    const p=el.parentNode; p.replaceChild(document.createTextNode(el.textContent),el); p.normalize();
-  });
-}
-function normalizeWS(s){ return s.replace(/[\s\u00a0]+/g,' ').trim(); }
+function normalizeWS(s){ return (s||'').replace(/[\s\u00a0]+/g,' ').trim(); }
+function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 
-function highlightText(text,cls){
-  if(!text) return null;
-  const content=document.getElementById('reader-content');
-  const clean=normalizeWS(text);
-  if(!clean) return null;
-
-  // Strategy 1: exact match in a single text node (normalized)
-  const walker=document.createTreeWalker(content,NodeFilter.SHOW_TEXT);
-  let node;
-  while(node=walker.nextNode()){
-    const nodeNorm=normalizeWS(node.nodeValue);
-    const idx=nodeNorm.indexOf(clean);
-    if(idx!==-1){
-      // Map normalized index back to raw index
-      let rawIdx=0, normCount=0;
-      const raw=node.nodeValue;
-      while(rawIdx<raw.length && normCount<idx){
-        if(/[\s\u00a0]/.test(raw[rawIdx])){
-          while(rawIdx<raw.length && /[\s\u00a0]/.test(raw[rawIdx])) rawIdx++;
-          normCount++;
-        } else { rawIdx++; normCount++; }
-      }
-      // Find end
-      let rawEnd=rawIdx, normEnd=normCount;
-      while(rawEnd<raw.length && normEnd<idx+clean.length){
-        if(/[\s\u00a0]/.test(raw[rawEnd])){
-          while(rawEnd<raw.length && /[\s\u00a0]/.test(raw[rawEnd])) rawEnd++;
-          normEnd++;
-        } else { rawEnd++; normEnd++; }
-      }
-      const span=document.createElement('span'); span.className=cls;
-      span.textContent=raw.slice(rawIdx,rawEnd);
-      const p=node.parentNode;
-      if(rawIdx>0) p.insertBefore(document.createTextNode(raw.slice(0,rawIdx)),node);
-      p.insertBefore(span,node);
-      if(rawEnd<raw.length) p.insertBefore(document.createTextNode(raw.slice(rawEnd)),node);
-      p.removeChild(node); return span;
-    }
-  }
-
-  // Strategy 2: sentence spans multiple nodes — find first ~6 words in any text node
-  const words=clean.split(' ').slice(0,6).join(' ');
-  if(words.length<8) return null;
-  const walker2=document.createTreeWalker(content,NodeFilter.SHOW_TEXT);
-  while(node=walker2.nextNode()){
-    const nodeNorm=normalizeWS(node.nodeValue);
-    if(nodeNorm.includes(words)){
-      const idx=nodeNorm.indexOf(words);
-      const span=document.createElement('span'); span.className=cls;
-      span.textContent=node.nodeValue.slice(idx, idx+words.length);
-      const p=node.parentNode;
-      if(idx>0) p.insertBefore(document.createTextNode(node.nodeValue.slice(0,idx)),node);
-      p.insertBefore(span,node);
-      if(idx+words.length<node.nodeValue.length) p.insertBefore(document.createTextNode(node.nodeValue.slice(idx+words.length)),node);
-      p.removeChild(node); return span;
-    }
-  }
-  return null;
-}
+function clearHighlight(cls){ /* handled by _originalChapterHTML restore */ }
+function highlightText(text,cls){ return document.querySelector('.'+cls); }
 let _highlightTimer=null;
 function highlightReading(){
   clearHighlight('highlight-reading');
