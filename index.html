@@ -1556,6 +1556,7 @@ const ALL_VIEWS = ['library-view','settings-view','reader-view','bookshelf-view'
 function hideAllViews(){ ALL_VIEWS.forEach(v=>{ const el=document.getElementById(v); if(el) el.classList.remove('active'); }); }
 
 function showLibraryView() {
+  document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
   hideAllViews();
   document.getElementById('library-view').classList.add('active');
   document.getElementById('back-btn').style.display='none';
@@ -1565,6 +1566,7 @@ function showLibraryView() {
   document.getElementById('dock').classList.remove('visible');
 }
 function showBookshelfView() {
+  document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
   hideAllViews();
   document.getElementById('bookshelf-view').classList.add('active');
   document.getElementById('back-btn').style.display='block';
@@ -1575,6 +1577,7 @@ function showBookshelfView() {
   renderBookshelf();
 }
 function showSettingsView() {
+  document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
   hideAllViews();
   document.getElementById('settings-view').classList.add('active');
   document.getElementById('back-btn').style.display='block';
@@ -1584,6 +1587,9 @@ function showSettingsView() {
   document.getElementById('dock').classList.remove('visible');
 }
 function showReaderView() {
+  document.getElementById('brightness-overlay').style.background=`rgba(0,0,0,${parseInt(localStorage.getItem('pl_brightness')||'0')/100})`;
+  // Restore brightness overlay when entering reader
+  setTimeout(()=>{ const val=localStorage.getItem('pl_brightness')||'0'; document.getElementById('brightness-overlay').style.background=`rgba(0,0,0,${parseInt(val)/100})`; },0);
   hideAllViews();
   document.getElementById('reader-view').classList.add('active');
   document.getElementById('back-btn').style.display='block';
@@ -2775,7 +2781,9 @@ function changeBrightness(delta) {
 function setBrightness(val) {
   val = parseInt(val);
   const opacity = val / 100;
-  document.getElementById('brightness-overlay').style.background = `rgba(0,0,0,${opacity})`;
+  // Only apply overlay when reader is active
+  const inReader = document.getElementById('reader-view')?.classList.contains('active');
+  document.getElementById('brightness-overlay').style.background = inReader ? `rgba(0,0,0,${opacity})` : 'rgba(0,0,0,0)';
   localStorage.setItem('pl_brightness', val);
   const bv = document.getElementById('bright-val');
   if (bv) bv.textContent = val + '%';
