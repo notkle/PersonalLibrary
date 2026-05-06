@@ -592,6 +592,12 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
   font-style: italic; margin-top: -4px;
 }
 
+/* Dropdown scrollbar — minimalist */
+select::-webkit-scrollbar { width: 4px; }
+select::-webkit-scrollbar-track { background: #1a1208; }
+select::-webkit-scrollbar-thumb { background: #3a2810; border-radius: 2px; }
+select::-webkit-scrollbar-button { display: none; height: 0; }
+
 @media(max-width:680px){
   .reader-scroll{padding:36px 56px}
   .search-panel.open{width:260px}
@@ -1699,6 +1705,9 @@ function buildSentenceCache(){
 // ═══════════════════════════════════════════
 // LOAD CHAPTER
 // ═══════════════════════════════════════════
+// Maps sentence index -> block element for fast O(1) highlight lookup
+let _sentenceBlockMap = [];
+
 function loadChapter(ci,si=0){
   stopSpeech(); chIdx=ci; sIdx=si;
   const ch=book.chapters[ci];
@@ -1709,13 +1718,74 @@ function loadChapter(ci,si=0){
   const content=document.getElementById('reader-content');
   content.innerHTML=ch.html||ch.text;
   content.querySelectorAll('script,style').forEach(e=>e.remove());
-  // Style headings to look good but exclude from highlight matching base
-  content.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h=>{
-    h.setAttribute('data-heading','1');
-  });
   _originalChapterHTML = content.innerHTML;
   _lastHighlightedIdx = -1;
+  // Build sentence->block map after render
+  _sentenceBlockMap = buildSentenceBlockMap(content, sentences);
   updateScrollbar(); updateProgress(); highlightReading(); scrollToReading();
+}
+
+const BLOCK_TAGS = new Set(['P','DIV','LI','BLOCKQUOTE','SECTION','ARTICLE','TD','DD','FIGURE']);
+
+function getBlockAncestor(node, root){
+  let el = node.nodeType === 3 ? node.parentElement : node;
+  while(el && el !== root){
+    if(BLOCK_TAGS.has(el.nodeName)) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+function buildSentenceBlockMap(content, sents){
+  // Get all text nodes outside headings, joined into a single string
+  // Track which block element each character position belongs to
+  const HEADING = /^H[1-6]$/;
+  const blockRanges = []; // [{start, end, el}]
+  let pos = 0;
+
+  // Walk block elements in order
+  const blocks = Array.from(content.querySelectorAll('p, li, blockquote, td, dd, div:not(:has(p,li,blockquote))'));
+  if(!blocks.length){
+    // Fallback: treat whole content as one block
+    blocks.push(content);
+  }
+
+  // Build a flat text from all blocks, tracking positions
+  let flatText = '';
+  const blockMap = []; // [{start, end, el}]
+
+  for(const block of blocks){
+    // Skip heading children
+    let inH = false;
+    let p = block.parentElement;
+    while(p && p !== content){ if(HEADING.test(p.nodeName)){inH=true;break;} p=p.parentElement; }
+    if(inH || HEADING.test(block.nodeName)) continue;
+
+    const blockText = (block.textContent||'').replace(/\s+/g,' ').trim();
+    if(!blockText) continue;
+    blockMap.push({ start: flatText.length, end: flatText.length + blockText.length, el: block });
+    flatText += blockText + ' ';
+  }
+
+  const flatLower = flatText.toLowerCase();
+  const map = new Array(sents.length).fill(null);
+
+  for(let si=0; si<sents.length; si++){
+    const sNorm = normalizeWS(sents[si]).toLowerCase();
+    if(!sNorm) continue;
+    // Find first few words in flat text
+    const probe = sNorm.split(' ').slice(0,5).join(' ');
+    const idx = flatLower.indexOf(probe);
+    if(idx === -1) continue;
+    // Find which block contains this position
+    for(const bm of blockMap){
+      if(idx >= bm.start && idx < bm.end){
+        map[si] = bm.el;
+        break;
+      }
+    }
+  }
+  return map;
 }
 
 function splitSentences(text){
@@ -1835,7 +1905,7 @@ function attachClickToJump(){
 function normalizeWS(s){ return (s||'').replace(/[\s\u00a0]+/g,' ').trim(); }
 function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 
-function clearHighlight(cls){ /* handled by _originalChapterHTML restore */ }
+function clearHighlight(cls){ document.querySelectorAll('.'+cls).forEach(el=>el.classList.remove(cls)); }
 function highlightText(text,cls){ return document.querySelector('.'+cls); }
 
 let _originalChapterHTML = '';
@@ -1844,83 +1914,14 @@ let _lastHighlightedIdx = -1;
 function highlightReading(){
   const content = document.getElementById('reader-content');
   if(!content) return;
-  if(_originalChapterHTML) content.innerHTML = _originalChapterHTML;
 
-  const sentence = sentences[sIdx];
-  if(!sentence) return;
-  const clean = normalizeWS(sentence);
-  if(!clean || clean.length < 2) return;
-  const words = clean.split(' ').filter(w=>w.length>0);
-  if(!words.length) return;
+  // Remove previous highlight without full innerHTML restore (much faster)
+  content.querySelectorAll('.highlight-reading').forEach(el => el.classList.remove('highlight-reading'));
 
-  // Collect all text nodes (skip headings)
-  const textNodes = [];
-  const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
-  let node;
-  while(node = walker.nextNode()){
-    let p = node.parentNode, inH = false;
-    while(p && p !== content){ if(/^H[1-6]$/.test(p.nodeName)){inH=true;break;} p=p.parentNode; }
-    if(!inH && node.nodeValue.trim()) textNodes.push(node);
-  }
-
-  // Build a flat normalized string from all text nodes with node boundaries tracked
-  // This lets us find a sentence that spans multiple nodes (across <em>, <strong>, etc.)
-  const segments = textNodes.map(n => ({ node: n, text: normalizeWS(n.nodeValue) }));
-  const joined = segments.map(s => s.text).join(' ');
-  const joinedLower = joined.toLowerCase();
-
-  // Try progressively shorter prefixes of the sentence
-  const counts = [...new Set([words.length, Math.min(10,words.length), Math.min(6,words.length), Math.min(3,words.length)])].filter(n=>n>=1&&n<=words.length);
-
-  for(const n of counts){
-    const target = words.slice(0,n).join(' ').toLowerCase();
-    if(target.length < 2) continue;
-    const idx = joinedLower.indexOf(target);
-    if(idx === -1) continue;
-
-    // Found in joined string — now find which node(s) contain position idx
-    // Walk segments to find the node that contains the start of the match
-    let pos = 0;
-    for(let si = 0; si < segments.length; si++){
-      const seg = segments[si];
-      const segStart = pos;
-      const segEnd   = pos + seg.text.length;
-
-      if(idx >= segStart && idx < segEnd){
-        // Match starts in this segment — highlight just this node's portion
-        const localIdx = idx - segStart;
-        const localEnd = Math.min(localIdx + target.length, seg.text.length);
-
-        // Map normalized localIdx back to raw node value
-        const raw = seg.node.nodeValue;
-        let ri=0, ni=0;
-        while(ri<raw.length && ni<localIdx){
-          if(/[\s ]/.test(raw[ri])){ while(ri<raw.length&&/[\s ]/.test(raw[ri]))ri++; ni++; }
-          else{ ri++; ni++; }
-        }
-        // Find end: advance ni to localEnd
-        let re2=ri, ne=ni;
-        while(re2<raw.length && ne<localEnd){
-          if(/[\s ]/.test(raw[re2])){ while(re2<raw.length&&/[\s ]/.test(raw[re2]))re2++; ne++; }
-          else{ re2++; ne++; }
-        }
-        // Clamp to actual raw length
-        re2 = Math.min(re2, raw.length);
-        if(ri >= re2) break;
-
-        const span = document.createElement('span');
-        span.className = 'highlight-reading';
-        span.textContent = raw.slice(ri, re2);
-        const par = seg.node.parentNode;
-        if(!par) break;
-        if(ri > 0) par.insertBefore(document.createTextNode(raw.slice(0,ri)), seg.node);
-        par.insertBefore(span, seg.node);
-        if(re2 < raw.length) par.insertBefore(document.createTextNode(raw.slice(re2)), seg.node);
-        par.removeChild(seg.node);
-        return;
-      }
-      pos = segEnd + 1; // +1 for the space we joined with
-    }
+  // Look up the pre-built map
+  const blockEl = _sentenceBlockMap[sIdx];
+  if(blockEl && content.contains(blockEl)){
+    blockEl.classList.add('highlight-reading');
   }
   _lastHighlightedIdx = sIdx;
 }
