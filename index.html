@@ -863,6 +863,17 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
     <div class="dock-info"><span id="prog-pct">0%</span><span id="prog-chapter">—</span></div>
   </div>
 
+  <div class="dock-divider"></div>
+
+  <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+    <span style="font-size:0.65rem;color:rgba(200,144,42,0.4);text-transform:uppercase;letter-spacing:0.06em">Dim</span>
+    <button class="dock-speed-btn" onclick="changeBrightness(-5)">−</button>
+    <span id="dock-bright-val" style="font-size:0.8rem;color:var(--amber-light);min-width:30px;text-align:center">0%</span>
+    <button class="dock-speed-btn" onclick="changeBrightness(5)">+</button>
+  </div>
+
+  <div class="dock-divider"></div>
+
   <button class="dock-icon-btn" id="zzz-btn" onclick="handleZzz()" title="Save sleep position">ZZZ</button>
 
   <button class="dock-icon-btn" id="search-btn" onclick="toggleSearch()">
@@ -1986,18 +1997,21 @@ function restoreAppearancePrefs() {
 // ═══════════════════════════════════════════
 function changeBrightness(delta) {
   const bs = document.getElementById('bright-slider');
-  if (!bs) return;
-  const newVal = Math.max(0, Math.min(90, parseInt(bs.value) + delta));
-  bs.value = newVal;
+  const current = bs ? parseInt(bs.value) : parseInt(localStorage.getItem('pl_brightness')||'0');
+  const newVal = Math.max(0, Math.min(90, current + delta));
+  if (bs) bs.value = newVal;
   setBrightness(newVal);
 }
 
 function setBrightness(val) {
+  val = parseInt(val);
   const opacity = val / 100;
   document.getElementById('brightness-overlay').style.background = `rgba(0,0,0,${opacity})`;
   localStorage.setItem('pl_brightness', val);
   const bv = document.getElementById('bright-val');
   if (bv) bv.textContent = val + '%';
+  const dv = document.getElementById('dock-bright-val');
+  if (dv) dv.textContent = val + '%';
 }
 
 function restoreBrightness() {
