@@ -1478,7 +1478,7 @@ async function parseEpub(file) {
     return (clone.textContent||'').replace(/\s+/g,' ').trim();
   };
 
-  const allHeadings = Array.from(masterBody.querySelectorAll('h1,h2,h3,h4,h5,h6,p'));
+  const allHeadings = Array.from(masterBody.querySelectorAll('h1,h2,h3,h4,h5,h6'));
 
   // Match each TOC label to a heading element
   const chapterHeadings = []; // [{label, el}]
@@ -1488,11 +1488,15 @@ async function parseEpub(file) {
     let bestEl = null;
     for (const h of allHeadings) {
       const hText = (h.textContent||'').toLowerCase().replace(/\s+/g,' ').trim();
-      if (hText === labelNorm || hText.includes(labelNorm) || labelNorm.includes(hText)) {
-        // Prefer exact match and headings over paragraphs
+      // Only match if heading text exactly equals the TOC label,
+      // or the heading contains ONLY the label (handles minor whitespace/punctuation)
+      // Never match if the label is just a word found inside a longer heading
+      const exactMatch = hText === labelNorm;
+      const headingContainsLabel = hText.startsWith(labelNorm) || hText.endsWith(labelNorm);
+      const labelContainsHeading = labelNorm === hText; // same as exact
+      if (exactMatch || headingContainsLabel) {
         if (!bestEl) { bestEl = h; }
-        else if (h.tagName.startsWith('H') && !bestEl.tagName.startsWith('H')) { bestEl = h; }
-        else if (hText === labelNorm && bestEl.textContent.toLowerCase().trim() !== labelNorm) { bestEl = h; }
+        else if (exactMatch) { bestEl = h; } // prefer exact match
       }
     }
     if (bestEl && !chapterHeadings.find(c => c.el === bestEl)) {
