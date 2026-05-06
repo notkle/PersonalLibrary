@@ -1908,33 +1908,66 @@ function splitSentences(text){ // kept for search/TTS fallback
   return text.split(/[.!?]+/).map(s=>s.trim()).filter(s=>s.length>2);
 }
 
+// Abbreviations whose trailing period must never trigger a sentence split
+const SPLIT_ABBREVS = /^(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Ave|Blvd|Dept|Gov|Lt|Capt|Sgt|Gen|Col|Maj|Rev|Hon|Pres|Sen|Rep|vs|etc|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/i;
+
 function splitHtml(html){
   if(!html) return [];
-  // Replace .!? inside HTML tags with placeholder so we don't split on them
-  const HOLDER = '';
-  let safe = '';
-  let inTag = false;
-  for(let i=0;i<html.length;i++){
-    const ch = html[i];
-    if(ch==='<') inTag=true;
-    if(ch==='>') inTag=false;
-    if(inTag && (ch==='.'||ch==='!'||ch==='?')) safe+=HOLDER;
-    else safe+=ch;
-  }
-  // Split on sentence-ending punctuation
-  const parts = safe.split(/[.!?]+/);
-  // Restore placeholders and reconstruct with punctuation
+
   const result = [];
-  let pos = 0;
-  for(let i=0;i<parts.length;i++){
-    const part = parts[i].replace(new RegExp(HOLDER,'g'),'.');
-    const rawPart = html.slice(pos, pos+parts[i].length);
-    pos += parts[i].length;
-    // skip the delimiter chars
-    while(pos < html.length && /[.!?]/.test(html[pos])) pos++;
-    const trimmed = rawPart; // no trim — preserve whitespace to match innerHTML
-    if(trimmed.trim().length > 2) result.push(trimmed);
+  let current = '';
+  let i = 0;
+
+  while(i < html.length){
+    const ch = html[i];
+
+    // Pass HTML tags through untouched
+    if(ch === '<'){
+      let tag = '';
+      while(i < html.length && html[i] !== '>') { tag += html[i]; i++; }
+      tag += '>';
+      current += tag;
+      i++;
+      continue;
+    }
+
+    // Check for sentence-ending punctuation
+    if(ch === '.' || ch === '!' || ch === '?'){
+      // Collect consecutive punctuation
+      let punct = '';
+      let pi = i;
+      while(pi < html.length && /[.!?]/.test(html[pi])){ punct += html[pi]; pi++; }
+
+      // Only single periods can be abbreviations (not !! or ??)
+      if(ch === '.' && punct === '.'){
+        // Get the last plain-text word before this period
+        const plainSoFar = current.replace(/<[^>]*>/g, '');
+        const lastWord = (plainSoFar.match(/([A-Za-z]+)\s*$/) || [])[1] || '';
+        // Don't split if it's a known abbreviation or a single capital letter (initial)
+        if(SPLIT_ABBREVS.test(lastWord) || /^[A-Z]$/.test(lastWord)){
+          current += punct;
+          i = pi;
+          continue;
+        }
+      }
+
+      // Real sentence end — flush
+      current += punct;
+      i = pi;
+      if(current.replace(/<[^>]*>/g,'').trim().length > 2){
+        result.push(current);
+      }
+      current = '';
+      continue;
+    }
+
+    current += ch;
+    i++;
   }
+
+  // Flush remaining
+  if(current.replace(/<[^>]*>/g,'').trim().length > 2) result.push(current);
+
   return result;
 }
 
