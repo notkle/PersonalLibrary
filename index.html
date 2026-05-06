@@ -1840,7 +1840,7 @@ function buildSentenceCache(){
   totalSentences=0;
   // Only split current chapter immediately — rest built lazily
   const curS=splitSentences(book.chapters[chIdx]?.text||'');
-  sentenceCache[chIdx]=curS;
+  // sentenceCache[chIdx] left empty — loadChapter will populate via splitHtml
   // Rough estimate total for progress bar using char count ratio
   const totalChars=book.chapters.reduce((a,ch)=>a+(ch.text?.length||0),0);
   const avgSentLen=curS.length>0?(book.chapters[chIdx]?.text?.length||1)/curS.length:80;
@@ -1864,7 +1864,7 @@ function buildSentenceCache(){
       return;
     }
     if(idx!==chIdx && !sentenceCache[idx]){
-      sentenceCache[idx]=splitSentences(book.chapters[idx].text||'');
+      sentenceCache[idx]=splitSentences(book.chapters[idx].text||''); // plain text for progress estimates only
     }
     idx++;
     setTimeout(buildNext,0); // yield to browser between each chapter
