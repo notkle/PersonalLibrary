@@ -715,15 +715,9 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
 <!-- BOOKSHELF VIEW -->
 <div id="bookshelf-view" class="view">
   <div style="padding:36px 36px 120px; overflow-y:auto; height:100%; background:var(--bg);">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:32px;">
-      <div>
-        <h1 style="font-family:'Playfair Display',serif; font-size:1.9rem; color:var(--paper); font-weight:400;">Your <em style="color:var(--amber-light);font-style:italic">Bookshelf</em></h1>
-        <div class="lib-sub" id="bookshelf-count" style="margin-top:4px"></div>
-      </div>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <button class="btn-delete-mode" id="delete-mode-btn" onclick="toggleDeleteMode()">Delete Books</button>
-        <button class="btn-delete-count" id="delete-count-btn" style="display:none" onclick="confirmDeleteSelected()">0 Selected</button>
-      </div>
+    <div style="margin-bottom:32px;">
+      <h1 style="font-family:'Playfair Display',serif; font-size:1.9rem; color:var(--paper); font-weight:400;">Your <em style="color:var(--amber-light);font-style:italic">Bookshelf</em></h1>
+      <div class="lib-sub" id="bookshelf-count" style="margin-top:4px"></div>
     </div>
     <div class="shelf-wrap">
       <div class="books-row" id="bookshelf-row">
@@ -736,6 +730,10 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
         </div>
       </div>
       <div class="shelf-plank"></div>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:18px;">
+      <button class="btn-delete-mode" id="delete-mode-btn" onclick="toggleDeleteMode()">Delete Books</button>
+      <button class="btn-delete-count" id="delete-count-btn" style="display:none" onclick="confirmDeleteSelected()">Remove 0</button>
     </div>
   </div>
 </div>
@@ -1458,6 +1456,7 @@ function showReaderView() {
 }
 function goToLibrary() {
   stopSpeech();
+  sessionStorage.removeItem('pl_open_book');
   renderLibrary();
   showLibraryView();
 }
@@ -1817,6 +1816,7 @@ function renderBookshelf(){
 function openBook(id){
   book=books.find(b=>b.id===id);
   if(!book) return;
+  sessionStorage.setItem('pl_open_book', id);
   chIdx=book.lastCh||0; sIdx=book.lastS||0;
   rate=book.lastRate||1.0; pitch=book.lastPitch||1.0;
   sleepChIdx=null; sleepSIdx=null;
@@ -2101,9 +2101,22 @@ function updateProgress(){
 // SPEECH
 // ═══════════════════════════════════════════
 let utt=null;
+function preprocessForTTS(text){
+  if(!text) return text;
+  // Replace abbreviation periods so TTS engine doesn't pause on them
+  // e.g. "Mr. Tesla" → "Mr Tesla", "Dr. Smith" → "Dr Smith"
+  const abbrevs = /\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Ave|Blvd|Dept|Gov|Lt|Capt|Sgt|Gen|Col|Maj|Rev|Hon|Pres|Sen|Rep|vs|etc|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\./gi;
+  text = text.replace(abbrevs, '$1');
+  // Replace single initials like "J. Smith" → "J Smith"
+  text = text.replace(/\b([A-Z])\./g, '$1');
+  // Clean up any double spaces
+  return text.replace(/  +/g, ' ').trim();
+}
+
 function speak(text){
   window.speechSynthesis.cancel();
   if(!text) return;
+  text = preprocessForTTS(text);
   utt=new SpeechSynthesisUtterance(text);
   utt.rate=rate; utt.pitch=pitch; utt.volume=voiceVol;
   if(selVoice) utt.voice=selVoice;
@@ -2805,7 +2818,7 @@ function toggleBookSelect(id){
   const countBtn = document.getElementById('delete-count-btn');
   if(selectedForDelete.size > 0){
     countBtn.style.display = 'block';
-    countBtn.textContent = selectedForDelete.size + ' Selected';
+    countBtn.textContent = 'Remove ' + selectedForDelete.size;
   } else {
     countBtn.style.display = 'none';
   }
@@ -2883,6 +2896,11 @@ async function init(){
   books = await dbAll('books');
   books.sort((a,b) => b.addedAt - a.addedAt);
   renderLibrary();
+  // Restore open book from before page refresh
+  const _lastOpenBook = sessionStorage.getItem('pl_open_book');
+  if(_lastOpenBook && books.find(b=>b.id===_lastOpenBook)){
+    openBook(_lastOpenBook);
+  }
   await loadAmbientSounds();
   restoreVolPrefs();
   loadYTApi();
