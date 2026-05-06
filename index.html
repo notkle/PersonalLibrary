@@ -1950,34 +1950,18 @@ function highlightReading(){
   const content = document.getElementById('reader-content');
   if(!content) return;
 
-  // Remove previous highlight
-  content.querySelectorAll('.highlight-reading').forEach(span => {
-    const p = span.parentNode;
-    while(span.firstChild) p.insertBefore(span.firstChild, span);
-    p.removeChild(span);
-    p.normalize();
-  });
+  // Restore clean HTML (blob URLs survive this since we never revokeObjectURL)
+  if(_originalChapterHTML) content.innerHTML = _originalChapterHTML;
 
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
 
-  // Exact match: sentence string from split() exists verbatim in the DOM text
-  const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
-  let node;
-  while(node = walker.nextNode()){
-    const idx = node.nodeValue.indexOf(sentence);
-    if(idx === -1) continue;
-    const frag = document.createDocumentFragment();
-    if(idx > 0) frag.appendChild(document.createTextNode(node.nodeValue.slice(0, idx)));
-    const span = document.createElement('span');
-    span.className = 'highlight-reading';
-    span.textContent = sentence;
-    frag.appendChild(span);
-    const end = idx + sentence.length;
-    if(end < node.nodeValue.length) frag.appendChild(document.createTextNode(node.nodeValue.slice(end)));
-    node.parentNode.replaceChild(frag, node);
-    return;
-  }
+  // Simple innerHTML replace — sentence string guaranteed to exist in the HTML text
+  const escaped = sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp('(' + escaped + ')', '');
+  const newHTML = content.innerHTML.replace(re, '<span class="highlight-reading">$1</span>');
+  if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
+
   _lastHighlightedIdx = sIdx;
 }
 
