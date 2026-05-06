@@ -679,7 +679,7 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
     </svg>
   </div>
   <div class="header-right">
-    <button class="btn btn-ghost" id="bookshelf-btn" onclick="showBookshelfView()">📚 Bookshelf</button>
+    <button class="btn btn-ghost" id="bookshelf-btn" onclick="showBookshelfView()">Bookshelf</button>
     <button class="btn btn-ghost" id="settings-btn" onclick="showSettingsView()">⚙ Settings</button>
     <button class="btn btn-ghost" id="back-btn" style="display:none" onclick="goToLibrary()">← Library</button>
   </div>
@@ -1870,101 +1870,76 @@ function splitSentences(text){
 }
 
 function attachClickToJump(){
-  // Called once at init — delegates to reader-scroll so it persists across chapter loads
-  const scroll=document.getElementById('reader-scroll');
+  const scroll = document.getElementById('reader-scroll');
   if(scroll._clickJumpAttached) return;
-  scroll._clickJumpAttached=true;
-  scroll.addEventListener('click', function handleContentClick(e){
-    const content=document.getElementById('reader-content');
-    if(!content.contains(e.target)) return;
-    // Get the text node at the click point
-    let clickedText = '';
-    const sel = window.getSelection();
+  scroll._clickJumpAttached = true;
+  scroll.addEventListener('click', e => {
+    const content = document.getElementById('reader-content');
+    if(!content || !content.contains(e.target) || !sentences.length) return;
 
-    // Use caretPositionFromPoint or caretRangeFromPoint
-    let range;
-    if(document.caretRangeFromPoint){
-      range = document.caretRangeFromPoint(e.clientX, e.clientY);
-    } else if(document.caretPositionFromPoint){
-      const pos = document.caretPositionFromPoint(e.clientX, e.clientY);
-      if(pos){ range = document.createRange(); range.setStart(pos.offsetNode, pos.offset); }
-    }
-    if(!range) return;
+    // Walk up from clicked element to find the nearest block (p, div, li, h*)
+    const BLOCKS = new Set(['P','DIV','LI','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','SECTION']);
+    let el = e.target;
+    while(el && el !== content && !BLOCKS.has(el.nodeName)) el = el.parentElement;
+    if(!el || el === content) return;
 
-    // Walk up to find the paragraph text context
-    let node = range.startContainer;
-    // Get surrounding text — walk up to block-level parent
-    let block = node;
-    while(block && block !== content && !['P','DIV','H1','H2','H3','H4','LI','SECTION','ARTICLE'].includes(block.nodeName)){
-      block = block.parentNode;
-    }
-    const blockText = (block && block !== content ? block.textContent : node.textContent || '').trim();
+    // Get the text of this block
+    const blockText = el.textContent.replace(/\s+/g,' ').trim();
+    if(!blockText) return;
 
-    // Find which sentence contains the clicked text fragment
-    // Get ~30 chars around the caret as a fingerprint
-    const offset = range.startOffset;
-    const nodeText = node.textContent || '';
-    const snippet = nodeText.slice(Math.max(0, offset-20), offset+20).trim();
-
-    if(!snippet) return;
-
-    // Find the closest matching sentence
+    // Find which sentence index best matches this block
+    // Try each sentence to see if it's contained in the block text
     let bestIdx = -1;
-    let bestScore = -1;
-    sentences.forEach((s, i) => {
-      if(s.toLowerCase().includes(snippet.toLowerCase())){
-        // Prefer closest to current position
-        const score = 1000 - Math.abs(i - sIdx);
-        if(score > bestScore){ bestScore = score; bestIdx = i; }
+    for(let i = 0; i < sentences.length; i++){
+      const s = sentences[i].replace(/\s+/g,' ').trim();
+      if(blockText.includes(s.slice(0, Math.min(s.length, 30)))){
+        bestIdx = i;
+        break;
       }
-    });
-
-    // Fallback: match by block text
-    if(bestIdx === -1 && blockText){
-      sentences.forEach((s, i) => {
-        const overlap = blockText.slice(0,40);
-        if(s.includes(overlap.slice(0,20))){
-          if(bestIdx === -1) bestIdx = i;
-        }
-      });
     }
-
     if(bestIdx === -1) return;
 
     sIdx = bestIdx;
     highlightReading();
     updateProgress();
     if(playing){ window.speechSynthesis.cancel(); speak(sentences[sIdx]); }
-  }, {once:false});
+  });
 }
 
 // ═══════════════════════════════════════════
-// HIGHLIGHTING
+// HIGHLIGHTING — clean simple version
 // ═══════════════════════════════════════════
-function normalizeWS(s){ return (s||'').replace(/[\s\u00a0]+/g,' ').trim(); }
-function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-
-function clearHighlight(cls){ document.querySelectorAll('.'+cls).forEach(el=>el.classList.remove(cls)); }
-function highlightText(text,cls){ return document.querySelector('.'+cls); }
-
 let _originalChapterHTML = '';
 let _lastHighlightedIdx = -1;
 
 function highlightReading(){
   const content = document.getElementById('reader-content');
   if(!content) return;
+
+  // Restore clean HTML
   if(_originalChapterHTML) content.innerHTML = _originalChapterHTML;
+
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
-  // Get first 4 plain alpha words as search probe
-  const words = sentence.replace(/[^a-zA-Z\s]/g,' ').trim().split(/\s+/).filter(w=>w.length>1).slice(0,4);
+
+  // Take first 5 letters-only words as a reliable probe
+  const words = [];
+  for(const w of sentence.split(/\s+/)){
+    const clean = w.replace(/[^a-zA-Z]/g,'');
+    if(clean.length > 1) words.push(clean);
+    if(words.length === 5) break;
+  }
   if(!words.length) return;
-  const probe = words.join('\s+');
+
+  // Build regex: each word separated by flexible match (handles inline tags, punctuation)
+  const pattern = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('[\\s\\S]{0,40}');
+
   try {
-    const re = new RegExp('(' + probe + '[^<]{0,200})', 'i');
-    const newHTML = content.innerHTML.replace(re,'<span class="highlight-reading">$1</span>');
+    const re = new RegExp('(' + pattern + ')', 'i');
+    const newHTML = content.innerHTML.replace(re, '<span class="highlight-reading">$1</span>');
     if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
   } catch(e){}
+
   _lastHighlightedIdx = sIdx;
 }
 
@@ -1972,6 +1947,12 @@ function scrollToReading(){
   const el = document.querySelector('.highlight-reading');
   if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
 }
+
+function clearHighlight(cls){
+  document.querySelectorAll('.'+cls).forEach(el=>el.classList.remove(cls));
+}
+function highlightText(){ return document.querySelector('.highlight-reading'); }
+function normalizeWS(s){ return (s||'').replace(/[\s\u00a0]+/g,' ').trim(); }
 
 // ═══════════════════════════════════════════
 // SCROLLBAR
