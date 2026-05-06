@@ -2103,23 +2103,11 @@ function updateProgress(){
 let utt=null;
 function preprocessForTTS(text){
   if(!text) return text;
-  // The Web Speech API pauses on ANY period it sees.
-  // Solution: remove ALL periods that are NOT true sentence endings.
-  // A true sentence ending period is followed by a space+capital or end of string.
-  
-  // Step 1: protect true sentence-ending periods with a placeholder
-  // True end = period followed by space+uppercase, or period at end of string
-  text = text.replace(/\.(?=\s+[A-Z])/g, '\x01'); // true sentence end → placeholder
-  text = text.replace(/\.$/, '\x01');               // trailing period → placeholder
-  
-  // Step 2: remove ALL remaining periods (abbreviations, Mr., Dr., decimals in names, etc.)
-  text = text.replace(/\./g, '');
-  
-  // Step 3: restore true sentence endings
-  text = text.replace(/\x01/g, '.');
-  
-  // Clean up extra spaces
-  return text.replace(/  +/g, ' ').trim();
+  // Remove periods after known abbreviations so TTS doesn't pause
+  text = text.replace(/\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Ave|Blvd|Dept|Gov|Lt|Capt|Sgt|Gen|Col|Maj|Rev|Hon|Pres|Sen|Rep|vs|etc|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.(?=\s)/g, '$1');
+  // Remove periods after single capital letters (initials like "J. Smith")
+  text = text.replace(/\b([A-Z])\.(?=\s)/g, '$1');
+  return text;
 }
 
 function speak(text){
