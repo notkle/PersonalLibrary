@@ -1355,7 +1355,7 @@ async function parseEpub(file) {
   const zip = await JSZip.loadAsync(file);
   const parser = new DOMParser();
 
-  // ── Get OPF path ───────────────────────────────────────────────────
+  // ── OPF ───────────────────────────────────────────────────────────
   const cxml = await zip.file('META-INF/container.xml').async('text');
   const cdoc = parser.parseFromString(cxml, 'application/xml');
   const opfPath = cdoc.querySelector('rootfile').getAttribute('full-path');
@@ -1366,20 +1366,14 @@ async function parseEpub(file) {
   const bookTitle = odoc.querySelector('title')?.textContent?.trim()   || file.name.replace('.epub','');
   const author    = odoc.querySelector('creator')?.textContent?.trim() || 'Unknown';
 
-  // ── Build manifest ─────────────────────────────────────────────────
   const manifest = {};
   odoc.querySelectorAll('manifest item').forEach(it => {
-    manifest[it.getAttribute('id')] = {
-      href: it.getAttribute('href'),
-      mt:   it.getAttribute('media-type')
-    };
+    manifest[it.getAttribute('id')] = { href: it.getAttribute('href'), mt: it.getAttribute('media-type') };
   });
 
-  // ── Get spine order ────────────────────────────────────────────────
-  const spineIds = Array.from(odoc.querySelectorAll('spine itemref'))
-    .map(i => i.getAttribute('idref'));
+  const spineIds = Array.from(odoc.querySelectorAll('spine itemref')).map(i => i.getAttribute('idref'));
 
-  // ── Load all spine HTML files in order ────────────────────────────
+  // ── Load all spine files ───────────────────────────────────────────
   const spineDocs = [];
   for (const id of spineIds) {
     const item = manifest[id];
@@ -1390,34 +1384,27 @@ async function parseEpub(file) {
     if (!f) continue;
     const html = await f.async('text');
     const doc  = parser.parseFromString(html, 'text/html');
-    doc.querySelectorAll('script,style,nav').forEach(e => e.remove());
-    spineDocs.push({ doc, dir, href });
+    doc.querySelectorAll('script,style').forEach(e => e.remove());
+    spineDocs.push({ doc, dir, href, file: href.split('/').pop() });
   }
 
-  // ── Resolve images in all docs (parallel per doc) ─────────────────
+  // ── Resolve images in parallel ─────────────────────────────────────
   await Promise.all(spineDocs.map(async sd => {
-    const imgs = Array.from(sd.doc.querySelectorAll('img'));
-    await Promise.all(imgs.map(async img => {
+    await Promise.all(Array.from(sd.doc.querySelectorAll('img')).map(async img => {
       const src = img.getAttribute('src');
       if (!src) { img.remove(); return; }
-      const decoded = src.replace(/&amp;/g, '&');
-      const candidates = [
-        opfDir + sd.dir + decoded,
-        opfDir + decoded,
-        sd.dir + decoded,
-        decoded
-      ];
+      const decoded = src.replace(/&amp;/g,'&');
+      const candidates = [opfDir+sd.dir+decoded, opfDir+decoded, sd.dir+decoded, decoded];
       let entry = null;
       for (const p of candidates) {
-        const clean = p.replace(/[^/]+\/\.\.\//g, '');
-        entry = zip.file(clean) || zip.file(decodeURIComponent(clean));
+        entry = zip.file(p.replace(/[^/]+\/\.\.\//g,'')) ||
+                zip.file(decodeURIComponent(p.replace(/[^/]+\/\.\.\//g,'')));
         if (entry) break;
       }
       if (!entry) { img.remove(); return; }
       try {
         const ext  = (decoded.split('.').pop()||'jpg').toLowerCase().replace('jpg','jpeg');
-        const mime = ({jpeg:'image/jpeg',png:'image/png',gif:'image/gif',
-                       webp:'image/webp',svg:'image/svg+xml'})[ext] || 'image/jpeg';
+        const mime = ({jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'})[ext]||'image/jpeg';
         const blob = await entry.async('blob');
         img.setAttribute('src', URL.createObjectURL(new Blob([blob],{type:mime})));
         img.style.cssText = 'max-width:100%;height:auto;display:block;margin:1em auto';
@@ -1426,7 +1413,54 @@ async function parseEpub(file) {
     }));
   }));
 
-  // ── STEP 1: Build one continuous body by appending all spine docs ──
+  // ── STEP 1: Find the TOC/Contents page ────────────────────────────
+  // It's the spine file with the most internal links to other files/anchors
+  let tocLabels = []; // ordered list of chapter names from the TOC
+
+  // Try NCX first (most reliable source of chapter names)
+  const ncxItem = Object.values(manifest).find(m => m.mt === 'application/x-dtbncx+xml');
+  if (ncxItem) {
+    try {
+      const ncxFile = zip.file(opfDir + ncxItem.href) || zip.file(ncxItem.href);
+      if (ncxFile) {
+        const ncxXml = await ncxFile.async('text');
+        const ncxDoc = parser.parseFromString(ncxXml, 'application/xml');
+        ncxDoc.querySelectorAll('navPoint').forEach(np => {
+          const label = np.querySelector('navLabel text')?.textContent?.trim();
+          if (label && label.length > 1 && label.length < 100) tocLabels.push(label);
+        });
+      }
+    } catch(e) {}
+  }
+
+  // Try scraping Contents page if NCX didn't give us useful labels
+  if (tocLabels.length < 3) {
+    tocLabels = [];
+    // Find the spine file that looks most like a TOC:
+    // has multiple links whose text is short (chapter titles) and unique
+    let bestSd = null, bestScore = 0;
+    for (const sd of spineDocs) {
+      const links = Array.from(sd.doc.querySelectorAll('a[href]'));
+      const candidates = links.filter(a => {
+        const t = a.textContent.trim();
+        const h = a.getAttribute('href')||'';
+        return t.length >= 2 && t.length <= 80 && !h.startsWith('http');
+      });
+      if (candidates.length > bestScore) {
+        bestScore = candidates.length;
+        bestSd = { sd, links: candidates };
+      }
+    }
+    if (bestSd && bestScore >= 3) {
+      const seen = new Set();
+      bestSd.links.forEach(a => {
+        const label = a.textContent.trim();
+        if (!seen.has(label)) { seen.add(label); tocLabels.push(label); }
+      });
+    }
+  }
+
+  // ── STEP 2: Build master body from all spine docs ──────────────────
   const masterBody = document.createElement('div');
   for (const sd of spineDocs) {
     const wrapper = document.createElement('div');
@@ -1434,86 +1468,108 @@ async function parseEpub(file) {
     masterBody.appendChild(wrapper);
   }
 
-  // ── STEP 2: Scan for headings — each is a chapter boundary ─────────
-  // Collect all h1/h2 elements that look like chapter titles
-  const headingEls = Array.from(masterBody.querySelectorAll('h1, h2'))
-    .filter(h => {
-      const t = h.textContent?.trim() || '';
-      return t.length >= 2 && t.length <= 120 && /[a-zA-Z0-9]/.test(t);
-    });
-
-  // ── STEP 3: Extract text for TTS (no headings, no images) ──────────
+  // ── STEP 3: Scan master body for TOC labels as headings ───────────
+  // For each TOC label, find the heading element whose text matches it
   const extractText = (el) => {
+    if (!el) return '';
     const clone = el.cloneNode(true);
     clone.querySelectorAll('h1,h2,h3,h4,h5,h6,nav,aside,figcaption').forEach(e => e.remove());
     clone.querySelectorAll('img').forEach(i => i.replaceWith(document.createTextNode(' ')));
-    return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+    return (clone.textContent||'').replace(/\s+/g,' ').trim();
   };
 
-  // ── STEP 4: Split masterBody into chapters at each heading ─────────
-  const chapters = [];
+  const allHeadings = Array.from(masterBody.querySelectorAll('h1,h2,h3,h4,h5,h6,p'));
 
-  if (headingEls.length >= 2) {
-    for (let i = 0; i < headingEls.length; i++) {
-      const heading     = headingEls[i];
-      const nextHeading = headingEls[i + 1] || null;
-      const chTitle     = heading.textContent.trim();
-
-      // Collect all nodes from this heading to the next
-      const frag = document.createElement('div');
-      let node = heading; // include the heading itself in HTML (for display)
-      while (node) {
-        if (nextHeading && node === nextHeading) break;
-        frag.appendChild(node.cloneNode(true));
-        // Walk to next sibling — but headings may be inside wrappers
-        // so we need to find the next node in document order
-        node = nextSiblingInContainer(node, masterBody, nextHeading);
-        if (!node) break;
+  // Match each TOC label to a heading element
+  const chapterHeadings = []; // [{label, el}]
+  for (const label of tocLabels) {
+    const labelNorm = label.toLowerCase().replace(/\s+/g,' ').trim();
+    // Find best matching heading
+    let bestEl = null;
+    for (const h of allHeadings) {
+      const hText = (h.textContent||'').toLowerCase().replace(/\s+/g,' ').trim();
+      if (hText === labelNorm || hText.includes(labelNorm) || labelNorm.includes(hText)) {
+        // Prefer exact match and headings over paragraphs
+        if (!bestEl) { bestEl = h; }
+        else if (h.tagName.startsWith('H') && !bestEl.tagName.startsWith('H')) { bestEl = h; }
+        else if (hText === labelNorm && bestEl.textContent.toLowerCase().trim() !== labelNorm) { bestEl = h; }
       }
-
-      const html = frag.innerHTML;
-      const text = extractText(frag);
-      if (text.length < 20) continue;
-      chapters.push({ title: chTitle, html, text });
+    }
+    if (bestEl && !chapterHeadings.find(c => c.el === bestEl)) {
+      chapterHeadings.push({ label, el: bestEl });
     }
   }
 
-  // ── Fallback: no headings found — use each spine doc as a chapter ──
+  // ── STEP 4: Extract chapter content between matched headings ───────
+  const chapters = [];
+
+  if (chapterHeadings.length >= 2) {
+    for (let i = 0; i < chapterHeadings.length; i++) {
+      const { label, el } = chapterHeadings[i];
+      const nextEl = chapterHeadings[i+1]?.el || null;
+
+      // Collect everything from this heading's block to next heading's block
+      const frag = document.createElement('div');
+
+      // Find the top-level ancestor of el within masterBody
+      let topNode = el;
+      while (topNode.parentElement && topNode.parentElement !== masterBody) {
+        topNode = topNode.parentElement;
+      }
+
+      // Similarly for nextEl
+      let topNext = nextEl;
+      while (topNext && topNext.parentElement && topNext.parentElement !== masterBody) {
+        topNext = topNext.parentElement;
+      }
+
+      // Collect siblings from topNode until topNext
+      let node = topNode;
+      while (node) {
+        if (topNext && node === topNext) break;
+        frag.appendChild(node.cloneNode(true));
+        node = node.nextElementSibling;
+      }
+
+      // If same top-level wrapper, extract just the portion between headings
+      if (frag.textContent.trim().length < 30 || (topNext && topNode === topNext)) {
+        // Both headings in same wrapper — extract between them
+        const div2 = document.createElement('div');
+        let inner = el;
+        while (inner) {
+          if (nextEl && inner === nextEl) break;
+          div2.appendChild(inner.cloneNode(true));
+          inner = inner.nextElementSibling;
+          if (!inner) {
+            // Move to parent's next sibling
+            let p = el.parentElement;
+            while (p && p !== masterBody && !p.nextElementSibling) p = p.parentElement;
+            inner = p?.nextElementSibling || null;
+          }
+        }
+        frag.innerHTML = div2.innerHTML;
+      }
+
+      const text = extractText(frag);
+      if (text.length < 50) continue;
+      chapters.push({ title: label, html: frag.innerHTML, text });
+    }
+  }
+
+  // ── Fallback: no TOC labels or too few chapters ────────────────────
   if (chapters.length < 2) {
     chapters.length = 0;
     let chNum = 0;
     for (const sd of spineDocs) {
       const text = extractText(sd.doc.body || sd.doc.documentElement);
       if (text.length < 60) continue;
-      const h = sd.doc.querySelector('h1,h2,h3');
-      const chTitle = h?.textContent?.trim() || ('Chapter ' + (++chNum));
-      chapters.push({ title: chTitle, html: sd.doc.body?.innerHTML || text, text });
+      const h = Array.from(sd.doc.querySelectorAll('h1,h2,h3'))
+        .find(h => { const t=h.textContent?.trim()||''; return t.length>2&&t.length<100&&/[a-zA-Z]/.test(t); });
+      chapters.push({ title: h?.textContent?.trim()||('Chapter '+(++chNum)), html: sd.doc.body?.innerHTML||text, text });
     }
   }
 
   return { title: bookTitle, author, chapters };
-}
-
-// Walk to the next node in document order within a container,
-// stopping before a specific target element
-function nextSiblingInContainer(node, container, stopAt) {
-  // Try next sibling first
-  if (node.nextElementSibling) {
-    if (stopAt && node.nextElementSibling === stopAt) return null;
-    return node.nextElementSibling;
-  }
-  // Walk up and try parent's next sibling
-  let parent = node.parentElement;
-  while (parent && parent !== container) {
-    if (parent.nextElementSibling) {
-      if (stopAt && parent.nextElementSibling === stopAt) return null;
-      // Check if stopAt is inside parent.nextElementSibling
-      if (stopAt && parent.nextElementSibling.contains(stopAt)) return null;
-      return parent.nextElementSibling;
-    }
-    parent = parent.parentElement;
-  }
-  return null;
 }
 async function parseTxt(file){
   const text=await file.text();
@@ -2539,6 +2595,9 @@ async function init(){
   const _savedPitch = parseFloat(localStorage.getItem('pl_pitch')||'1.0');
   if(!isNaN(_savedRate))  rate  = _savedRate;
   if(!isNaN(_savedPitch)) pitch = _savedPitch;
+  // Update display labels now that elements are cached
+  updateSpeedLabel();
+  updatePitchLabel();
   await openDB();
   books = await dbAll('books');
   books.sort((a,b) => b.addedAt - a.addedAt);
