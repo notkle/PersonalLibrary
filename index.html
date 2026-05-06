@@ -1892,11 +1892,7 @@ function loadChapter(ci,si=0){
     sentenceCache[ci] = splitHtml(_originalChapterHTML);
   }
   sentences=sentenceCache[ci];
-  console.log("HTML start:", _originalChapterHTML.slice(0,300));
-  console.log("Sentence 0:", sentences[0]);
-  console.log("Sentence 1:", sentences[1]);
-  console.log("Found 0:", _originalChapterHTML.indexOf(sentences[0]));
-  console.log("Found 1:", _originalChapterHTML.indexOf(sentences[1]));
+
   // Derive plain text per sentence for TTS (strip tags)
   const tmp=document.createElement('div');
   sentenceTexts = sentences.map(s=>{ tmp.innerHTML=s; return tmp.textContent.trim(); });
@@ -1950,24 +1946,41 @@ function attachClickToJump(){
     const content = document.getElementById('reader-content');
     if(!content || !content.contains(e.target) || !sentences.length) return;
 
-    // Walk up from clicked element to find the nearest block (p, div, li, h*)
-    const BLOCKS = new Set(['P','DIV','LI','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','SECTION']);
-    let el = e.target;
-    while(el && el !== content && !BLOCKS.has(el.nodeName)) el = el.parentElement;
-    if(!el || el === content) return;
+    // Use caretRangeFromPoint to find exactly where in the text was clicked
+    let range;
+    if(document.caretRangeFromPoint){
+      range = document.caretRangeFromPoint(e.clientX, e.clientY);
+    } else if(document.caretPositionFromPoint){
+      const pos = document.caretPositionFromPoint(e.clientX, e.clientY);
+      if(pos){ range = document.createRange(); range.setStart(pos.offsetNode, pos.offset); }
+    }
 
-    // Get the text of this block
-    const blockText = el.textContent.replace(/\s+/g,' ').trim();
-    if(!blockText) return;
+    // Get a text snippet around the click point
+    let snippet = '';
+    if(range && range.startContainer && range.startContainer.nodeValue){
+      const nodeText = range.startContainer.nodeValue;
+      const offset = range.startOffset;
+      snippet = nodeText.slice(Math.max(0, offset-15), offset+15).replace(/\s+/g,' ').trim();
+    }
 
-    // Find which sentence index best matches this block
-    // Try each sentence to see if it's contained in the block text
+    // Fallback: use block-level text
+    if(!snippet){
+      const BLOCKS = new Set(['P','DIV','LI','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','SECTION']);
+      let el = e.target;
+      while(el && el !== content && !BLOCKS.has(el.nodeName)) el = el.parentElement;
+      if(el && el !== content) snippet = el.textContent.slice(0,30).replace(/\s+/g,' ').trim();
+    }
+    if(!snippet) return;
+
+    // Find which sentence best contains the snippet
     let bestIdx = -1;
-    for(let i = 0; i < sentences.length; i++){
-      const s = sentences[i].replace(/\s+/g,' ').trim();
-      if(blockText.includes(s.slice(0, Math.min(s.length, 30)))){
-        bestIdx = i;
-        break;
+    let bestScore = -1;
+    for(let i = 0; i < sentenceTexts.length; i++){
+      const st = sentenceTexts[i] || '';
+      if(st.includes(snippet) || snippet.split(' ').filter(w=>w.length>3).some(w=>st.includes(w))){
+        // prefer closest to current position
+        const score = 1000 - Math.abs(i - sIdx);
+        if(score > bestScore){ bestScore = score; bestIdx = i; }
       }
     }
     if(bestIdx === -1) return;
@@ -1989,22 +2002,47 @@ function highlightReading(){
   const content = document.getElementById('reader-content');
   if(!content) return;
 
-  // _originalChapterHTML is pre-normalized (whitespace collapsed)
-  // Set it directly — blob URLs are preserved since normalization doesn't touch them
   content.innerHTML = _originalChapterHTML;
 
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
 
-  // Normalize sentence whitespace to match normalized HTML
+  // Try direct innerHTML match first (works for plain text sentences)
   const norm = sentence.replace(/\s+/g,' ').trim();
   const idx = content.innerHTML.indexOf(norm);
-  console.log("highlight idx:", idx, "norm:", norm.slice(0,50));
   if(idx !== -1){
     content.innerHTML =
       content.innerHTML.slice(0, idx) +
       '<span class="highlight-reading">' + norm + '</span>' +
       content.innerHTML.slice(idx + norm.length);
+    _lastHighlightedIdx = sIdx;
+    return;
+  }
+
+  // Fallback: use plain text (sentenceTexts) + TreeWalker for italic/formatted text
+  // sentenceTexts[sIdx] is the plain text version stripped of HTML tags
+  const plainText = (sentenceTexts[sIdx]||'').replace(/\s+/g,' ').trim();
+  if(!plainText || plainText.length < 2) return;
+
+  const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+  let node;
+  while(node = walker.nextNode()){
+    const val = node.nodeValue.replace(/\s+/g,' ');
+    const nodeIdx = val.indexOf(plainText);
+    if(nodeIdx !== -1){
+      const before = node.nodeValue.slice(0, nodeIdx);
+      const match = node.nodeValue.slice(nodeIdx, nodeIdx + plainText.length);
+      const after = node.nodeValue.slice(nodeIdx + plainText.length);
+      const span = document.createElement('span');
+      span.className = 'highlight-reading';
+      span.textContent = match;
+      const p = node.parentNode;
+      if(before) p.insertBefore(document.createTextNode(before), node);
+      p.insertBefore(span, node);
+      if(after) p.insertBefore(document.createTextNode(after), node);
+      p.removeChild(node);
+      break;
+    }
   }
   _lastHighlightedIdx = sIdx;
 }
