@@ -2916,16 +2916,18 @@ function initBookDrag(spine, bookId){
   spine.addEventListener('mousedown', e=>{
     dragBookId = bookId; dragStartX = e.clientX; dragStartY = e.clientY; isDragging = false;
     const ghost = document.getElementById('drag-ghost');
+    // Show ghost and pulse immediately on click
+    buildGhostStack(bookId);
+    ghost.style.left=(e.clientX-77)+'px'; ghost.style.top=(e.clientY-18)+'px';
+    ghost.classList.add('ghost-visible');
+    document.getElementById('return-slot')?.classList.add('pulsing');
+    document.querySelector('.return-slot-label')?.classList.add('pulsing');
     const onMove = e2=>{
       const dx=e2.clientX-dragStartX, dy=e2.clientY-dragStartY;
       if(!isDragging && Math.sqrt(dx*dx+dy*dy)>6){
         isDragging = true;
-        buildGhostStack(bookId);
         const ids=(returnMode&&selectedForDelete.size>0)?[...selectedForDelete]:[bookId];
         ids.forEach(id=>{ const s=document.querySelector(`#bookshelf-row .book-spine[data-id="${id}"]`); if(s) s.classList.add('dragging-source'); });
-        ghost.classList.add('ghost-visible');
-        document.getElementById('return-slot')?.classList.add('pulsing');
-        document.querySelector('.return-slot-label')?.classList.add('pulsing');
       }
       if(isDragging){
         ghost.style.left=(e2.clientX-77)+'px'; ghost.style.top=(e2.clientY-18)+'px';
