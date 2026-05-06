@@ -1697,7 +1697,7 @@ async function parseEpub(file) {
 
       const text = extractText(frag);
       if (text.length < 50) continue;
-      chapters.push({ title: label, html: frag.innerHTML, text });
+      try { chapters.push({ title: label, html: frag.innerHTML, text }); } catch(e){ console.warn('Skipped chapter:', e); }
     }
   }
 
@@ -1706,13 +1706,15 @@ async function parseEpub(file) {
     chapters.length = 0;
     let chNum = 0;
     for (const sd of spineDocs) {
-      const text = extractText(sd.doc.body || sd.doc.documentElement);
-      if (text.length < 60) continue;
-      const h = Array.from(sd.doc.querySelectorAll('h1,h2,h3'))
-        .find(h => { const t=h.textContent?.trim()||''; return t.length>2&&t.length<100&&/[a-zA-Z]/.test(t); });
-      if(sd.doc.body) cleanDOM(sd.doc.body);
-      const cleanText = extractText(sd.doc.body || sd.doc.documentElement);
-      chapters.push({ title: h?.textContent?.trim()||('Chapter '+(++chNum)), html: sd.doc.body?.innerHTML||cleanText, text: cleanText });
+      try {
+        const text = extractText(sd.doc.body || sd.doc.documentElement);
+        if (text.length < 60) continue;
+        const h = Array.from(sd.doc.querySelectorAll('h1,h2,h3'))
+          .find(h => { const t=h.textContent?.trim()||''; return t.length>2&&t.length<100&&/[a-zA-Z]/.test(t); });
+        if(sd.doc.body) cleanDOM(sd.doc.body);
+        const cleanText = extractText(sd.doc.body || sd.doc.documentElement);
+        chapters.push({ title: h?.textContent?.trim()||('Chapter '+(++chNum)), html: sd.doc.body?.innerHTML||cleanText, text: cleanText });
+      } catch(e){ console.warn('Skipped malformed spine document:', e); }
     }
   }
 
@@ -1864,7 +1866,7 @@ function buildSentenceCache(){
       return;
     }
     if(idx!==chIdx && !sentenceCache[idx]){
-      sentenceCache[idx]=splitSentences(book.chapters[idx].text||''); // plain text for progress estimates only
+      // sentenceCache[idx] left empty — loadChapter will populate via splitHtml when chapter is opened
     }
     idx++;
     setTimeout(buildNext,0); // yield to browser between each chapter
@@ -2035,12 +2037,19 @@ function highlightReading(){
   const content = document.getElementById('reader-content');
   if(!content) return;
 
-  content.innerHTML = _originalChapterHTML;
+  // Remove previous highlight span cleanly — no innerHTML restore needed
+  const prev = content.querySelector('.highlight-reading');
+  if(prev){
+    const parent = prev.parentNode;
+    parent.replaceChild(document.createTextNode(prev.textContent), prev);
+    parent.normalize();
+  }
 
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
 
-  // Try direct innerHTML match first (works for plain text sentences)
+  // On first load or after chapter change, content.innerHTML is already set.
+  // Try direct text match in innerHTML string
   const norm = sentence.replace(/\s+/g,' ').trim();
   const idx = content.innerHTML.indexOf(norm);
   if(idx !== -1){
@@ -2052,8 +2061,7 @@ function highlightReading(){
     return;
   }
 
-  // Fallback: use plain text (sentenceTexts) + TreeWalker for italic/formatted text
-  // sentenceTexts[sIdx] is the plain text version stripped of HTML tags
+  // Fallback: TreeWalker for italic/formatted text
   const plainText = (sentenceTexts[sIdx]||'').replace(/\s+/g,' ').trim();
   if(!plainText || plainText.length < 2) return;
 
