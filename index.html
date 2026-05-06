@@ -630,7 +630,6 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
     <button class="btn btn-ghost" id="settings-btn" onclick="showSettingsView()">⚙ Settings</button>
     <button class="btn btn-ghost" id="back-btn" style="display:none" onclick="goToLibrary()">← Library</button>
     <button class="btn btn-danger" id="remove-book-btn" style="display:none" onclick="confirmRemoveCurrentBook()">✕ Remove Book</button>
-    <button class="btn btn-primary" id="add-btn" onclick="var fi=document.getElementById('file-input');if(fi){fi.value='';fi.click();}">+ Add Book</button>
   </div>
 </header>
 <input type="file" id="file-input" accept=".epub,.txt,.html,.htm" multiple style="display:none">
@@ -1332,7 +1331,7 @@ function showLibraryView() {
   document.getElementById('library-view').classList.add('active');
   document.getElementById('back-btn').style.display='none';
   document.getElementById('remove-book-btn').style.display='none';
-  document.getElementById('add-btn').style.display='block';
+
   document.getElementById('settings-btn').style.display='block';
   document.body.classList.add('in-library');
 }
@@ -1341,7 +1340,7 @@ function showSettingsView() {
   document.getElementById('settings-view').classList.add('active');
   document.getElementById('back-btn').style.display='block';
   document.getElementById('remove-book-btn').style.display='none';
-  document.getElementById('add-btn').style.display='none';
+
   const sb=document.getElementById('settings-btn'); if(sb) sb.style.display='none';
   document.body.classList.add('in-library');
 }
@@ -1350,7 +1349,7 @@ function showReaderView() {
   document.getElementById('reader-view').classList.add('active');
   document.getElementById('back-btn').style.display='block';
   document.getElementById('remove-book-btn').style.display='block';
-  document.getElementById('add-btn').style.display='none';
+
   const sb=document.getElementById('settings-btn'); if(sb) sb.style.display='none';
   document.body.classList.remove('in-library');
 }
