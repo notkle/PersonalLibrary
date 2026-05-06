@@ -1989,26 +1989,23 @@ function highlightReading(){
   const content = document.getElementById('reader-content');
   if(!content) return;
 
-  // Restore clean HTML (blob URLs survive this since we never revokeObjectURL)
-  // no innerHTML restore — blob URLs must stay intact
+  // _originalChapterHTML is pre-normalized (whitespace collapsed)
+  // Set it directly — blob URLs are preserved since normalization doesn't touch them
+  content.innerHTML = _originalChapterHTML;
 
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
 
-  // sentence IS the html chunk — find it in innerHTML and wrap it
-  const normSentence = sentence.replace(/\s+/g," ").trim();
-  const idx = content.innerHTML.indexOf(normSentence);
-  console.log("highlight idx:", idx, "s:", normSentence.slice(0,40));
+  // Normalize sentence whitespace to match normalized HTML
+  const norm = sentence.replace(/\s+/g,' ').trim();
+  const idx = content.innerHTML.indexOf(norm);
+  console.log("highlight idx:", idx, "norm:", norm.slice(0,50));
   if(idx !== -1){
-    content.innerHTML = content.innerHTML.slice(0,idx) +
-      '<span class="highlight-reading">' + normSentence + '</span>' +
-      content.innerHTML.slice(idx + normSentence.length);
-    // Simple approach: use normalized idx directly since whitespace diff is minimal
-    content.innerHTML = content.innerHTML.slice(0,idx) +
-      '<span class="highlight-reading">' + content.innerHTML.slice(idx, idx+normSentence.length) + '</span>' +
-      content.innerHTML.slice(idx + normSentence.length);
+    content.innerHTML =
+      content.innerHTML.slice(0, idx) +
+      '<span class="highlight-reading">' + norm + '</span>' +
+      content.innerHTML.slice(idx + norm.length);
   }
-
   _lastHighlightedIdx = sIdx;
 }
 
