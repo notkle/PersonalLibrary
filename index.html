@@ -36,6 +36,21 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 
 /* LIBRARY VIEW */
 #library-view { overflow-y:auto; padding:36px 36px 120px; background:var(--bg); }
+.delete-mode .book-spine { cursor:default; }
+.delete-mode .book-spine::after {
+  content:'';
+  position:absolute; inset:0;
+  border:2px solid transparent;
+  border-radius:2px;
+  transition:border-color 0.15s;
+}
+.delete-mode .book-spine.selected::after { border-color:#ff6060; background:rgba(255,60,60,0.18); }
+.lib-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
+.lib-actions { display:flex; gap:10px; align-items:center; }
+.btn-delete-mode { background:transparent; border:1.5px solid rgba(200,80,80,0.35); color:#ff9090; font-family:"Crimson Pro",serif; font-size:0.88rem; padding:6px 14px; border-radius:3px; cursor:pointer; transition:all 0.18s; }
+.btn-delete-mode:hover,.btn-delete-mode.active { background:rgba(200,60,60,0.1); border-color:#ff7070; }
+.btn-delete-count { background:#8b2020; border:1.5px solid #6b1010; color:#ffd0d0; font-family:"Crimson Pro",serif; font-size:0.88rem; padding:6px 14px; border-radius:3px; cursor:pointer; transition:all 0.18s; }
+.btn-delete-count:hover { background:#a02828; }
 .lib-heading { font-family:'Playfair Display',serif; font-size:1.9rem; color:var(--paper); font-weight:400; margin-bottom:4px; }
 .lib-heading em { color:var(--amber-light); font-style:italic; }
 .lib-sub { font-size:0.88rem; color:var(--paper-dark); font-style:italic; margin-bottom:32px; }
@@ -207,7 +222,7 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
 .ambient-sound-opt.active { background:rgba(200,144,42,0.18); border-color:var(--amber); }
 .ambient-sound-opt.off-opt { opacity:0.7; }
 .aso-name { flex:1; font-size:0.9rem; color:var(--paper); }
-.aso-icon { font-size:1.1rem; }
+.aso-icon { font-size:1.1rem; width:22px; text-align:center; flex-shrink:0; }
 .ambient-empty { font-size:0.85rem; color:rgba(200,144,42,0.35); font-style:italic; text-align:center; padding:16px 0; }
 .ambient-goto-settings { font-size:0.78rem; color:rgba(200,144,42,0.45); text-align:center; cursor:pointer; text-decoration:underline; margin-top:4px; background:none; border:none; font-family:'Crimson Pro',serif; display:block; width:100%; }
 .ambient-goto-settings:hover { color:var(--amber-light); }
@@ -365,7 +380,7 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
 .rsp-ambient-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; max-height: 160px; overflow-y: auto; }
 .rsp-ambient-list::-webkit-scrollbar { width: 3px; }
 .rsp-ambient-list::-webkit-scrollbar-thumb { background: rgba(200,144,42,0.2); }
-.rsp-ambient-opt { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 4px; cursor: pointer; border: 1px solid rgba(200,144,42,0.1); background: rgba(200,144,42,0.04); transition: all 0.15s; }
+.rsp-ambient-opt { display: flex; align-items: center; gap: 9px; /* icon aligned */ padding: 8px 10px; border-radius: 4px; cursor: pointer; border: 1px solid rgba(200,144,42,0.1); background: rgba(200,144,42,0.04); transition: all 0.15s; }
 .rsp-ambient-opt:hover { background: rgba(200,144,42,0.1); border-color: rgba(200,144,42,0.25); }
 .rsp-ambient-opt.active { background: rgba(200,144,42,0.18); border-color: var(--amber); }
 .rsp-ambient-name { flex: 1; font-size: 0.88rem; color: var(--paper); }
@@ -629,14 +644,19 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
   <div class="header-right">
     <button class="btn btn-ghost" id="settings-btn" onclick="showSettingsView()">⚙ Settings</button>
     <button class="btn btn-ghost" id="back-btn" style="display:none" onclick="goToLibrary()">← Library</button>
-    <button class="btn btn-danger" id="remove-book-btn" style="display:none" onclick="confirmRemoveCurrentBook()">✕ Remove Book</button>
   </div>
 </header>
 <input type="file" id="file-input" accept=".epub,.txt,.html,.htm" multiple style="display:none">
 
 <!-- LIBRARY -->
 <div id="library-view" class="view active">
-  <div class="lib-sub" id="lib-count">No books yet</div>
+  <div class="lib-header">
+    <div class="lib-sub" id="lib-count">No books yet</div>
+    <div class="lib-actions" id="lib-actions">
+      <button class="btn-delete-mode" id="delete-mode-btn" onclick="toggleDeleteMode()">Delete Books</button>
+      <button class="btn-delete-count" id="delete-count-btn" style="display:none" onclick="confirmDeleteSelected()">0 Selected</button>
+    </div>
+  </div>
   <div class="shelf-wrap">
     <div class="books-row" id="books-row">
       <div class="empty-shelf" id="empty-shelf">
@@ -1027,6 +1047,17 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-delete-books">
+  <div class="modal">
+    <h3>Delete Books?</h3>
+    <p id="modal-delete-msg">Delete selected books? This cannot be undone.</p>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="cancelDeleteSelected()">No</button>
+      <button class="btn" style="background:#8b2020;border-color:#6b1010;color:#ffd0d0" onclick="executeDeleteSelected()">Yes</button>
+    </div>
+  </div>
+</div>
+
 <div class="bookmark-modal" id="bookmark-modal">
   <div class="bookmark-modal-header">
     <span class="bookmark-modal-title">Bookmark</span>
@@ -1330,7 +1361,7 @@ function showLibraryView() {
   ['library-view','settings-view','reader-view'].forEach(v=>document.getElementById(v).classList.remove('active'));
   document.getElementById('library-view').classList.add('active');
   document.getElementById('back-btn').style.display='none';
-  document.getElementById('remove-book-btn').style.display='none';
+
 
   document.getElementById('settings-btn').style.display='block';
   document.body.classList.add('in-library');
@@ -1339,7 +1370,7 @@ function showSettingsView() {
   ['library-view','settings-view','reader-view'].forEach(v=>document.getElementById(v).classList.remove('active'));
   document.getElementById('settings-view').classList.add('active');
   document.getElementById('back-btn').style.display='block';
-  document.getElementById('remove-book-btn').style.display='none';
+
 
   const sb=document.getElementById('settings-btn'); if(sb) sb.style.display='none';
   document.body.classList.add('in-library');
@@ -1348,7 +1379,7 @@ function showReaderView() {
   ['library-view','settings-view','reader-view'].forEach(v=>document.getElementById(v).classList.remove('active'));
   document.getElementById('reader-view').classList.add('active');
   document.getElementById('back-btn').style.display='block';
-  document.getElementById('remove-book-btn').style.display='block';
+
 
   const sb=document.getElementById('settings-btn'); if(sb) sb.style.display='none';
   document.body.classList.remove('in-library');
@@ -1640,8 +1671,12 @@ function renderLibrary(){
     el.className=`book-spine bc${ci}`;
     el.dataset.id=b.id;
     el.innerHTML=`<div class="book-spine-inner"><div class="spine-line"></div><div class="spine-title">${b.title}</div><div class="spine-author">${b.author}</div><div class="spine-line"></div></div><div class="spine-progress"><div class="spine-progress-fill" style="width:${b.progress||0}%"></div></div>`;
-    el.addEventListener('click',()=>openBook(b.id));
+    el.addEventListener('click',()=>{
+      if(deleteMode) toggleBookSelect(b.id);
+      else openBook(b.id);
+    });
     el.addEventListener('contextmenu',e=>{e.preventDefault();showCtx(e.clientX,e.clientY,b.id);});
+    if(selectedForDelete.has(b.id)) el.classList.add('selected');
     row.appendChild(el);
   });
 }
@@ -1731,37 +1766,46 @@ function loadChapter(ci,si=0){
 
 function splitSentences(text){
   if(!text) return [];
-  const t = text
+  // Normalize + strip footnote references like [1], (2), superscript numbers
+  let t = text
     .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ')
+    .replace(/\[\d+\]/g,'').replace(/\(\d+\)/g,'')   // strip [1] (2)
+    .replace(/\u00b9|\u00b2|\u00b3|[\u2070-\u2079]/g,'') // strip unicode superscripts
     .replace(/\s+/g,' ').trim();
   if(!t) return [];
 
+  // Simple split: find . ! ? that end a sentence
+  // Rule: split if followed by space+uppercase OR end of string
+  // Treat content inside quotes as a single unit — find closing quote
   const sentences = [];
   let start = 0;
-  let inQuote = false;
   let i = 0;
 
   while(i < t.length){
     const ch = t[i];
-    // Track whether we are inside a quotation
-    if(ch === '"' || ch === '\u201c' || ch === '\u201d' || ch === '"'){
-      inQuote = !inQuote;
+
+    // If we hit an opening quote, skip to closing quote before checking punctuation
+    if(ch === '"' || ch === '\u201c'){
+      i++;
+      while(i < t.length && t[i] !== '"' && t[i] !== '\u201d') i++;
+      i++; // skip closing quote
+      continue;
     }
-    // Only split on . ! ? when NOT inside a quote
-    if(!inQuote && (ch === '.' || ch === '!' || ch === '?')){
-      // Consume trailing punctuation and closing quotes
-      let end = i;
-      while(end+1 < t.length && '.!?'.includes(t[end+1])) end++;
-      while(end+1 < t.length && (t[end+1]==='"'||t[end+1]==="'"||t[end+1]==='\u201d'||t[end+1]==='\u2019'||t[end+1]===')')) end++;
-      // Only split if followed by space then uppercase, or end of string
-      const after = t[end+1];
-      const afterAfter = t[end+2];
-      const isEnd = !after || after === ' ' && (!afterAfter || afterAfter === afterAfter.toUpperCase() && /[A-Z"\u201c]/.test(afterAfter));
-      if(isEnd){
-        const s = t.slice(start, end+1).trim();
+
+    if(ch === '.' || ch === '!' || ch === '?'){
+      // Consume multiple punctuation chars
+      while(i+1 < t.length && '.!?'.includes(t[i+1])) i++;
+      // Consume closing quotes/parens after punctuation
+      while(i+1 < t.length && (t[i+1]==='"'||t[i+1]==="'"||t[i+1]==='\u201d'||t[i+1]==='\u2019'||t[i+1]===')')) i++;
+
+      const next = t[i+1];
+      const nextNext = t[i+2];
+      // Split if: end of string, or space followed by uppercase letter/quote
+      if(!next || (next===' ' && nextNext && /[A-Z\u201c"]/.test(nextNext))){
+        const s = t.slice(start, i+1).trim();
         if(s.length > 2) sentences.push(s);
-        start = end+1;
-        while(start < t.length && t[start] === ' ') start++;
+        start = i+2;
+        while(start < t.length && t[start]===' ') start++;
         i = start;
         continue;
       }
@@ -1864,19 +1908,28 @@ function highlightReading(){
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
 
-  // Use first 5 plain words as match target — avoids special char/quote regex failures
-  // Strip any leading quote characters for cleaner matching
-  const stripped = sentence.replace(/^[\u201c"'\u2018\s]+/, '').trim();
-  const words = stripped.split(/\s+/).filter(w => /[a-zA-Z0-9]/.test(w)).slice(0, 5);
+  // Strip leading quotes/footnote markers, take first 5 real words as probe
+  const stripped = sentence.replace(/^[\u201c"'\u2018\[\(\s]+/, '').trim();
+  const words = stripped.split(/\s+/).filter(w => /[a-zA-Z]/.test(w)).slice(0, 5);
   if(!words.length) return;
   const probe = words.join(' ');
   const esc = probe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Allow a few chars between words to handle inline elements like <em>
+  const pattern = esc.split('\\ ').join('[\\s\\S]{0,15}');
 
   try {
-    const re = new RegExp('(' + esc + '[^<]*)', 'i');
+    const re = new RegExp('(' + pattern + ')', 'i');
     const newHTML = content.innerHTML.replace(re, '<span class="highlight-reading">$1</span>');
     if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
-  } catch(e) {}
+  } catch(e) {
+    // Fallback: plain first 3 words
+    try {
+      const fb = words.slice(0,3).join(' ').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const re2 = new RegExp('('+fb+'[^<]{0,120})', 'i');
+      const newHTML = content.innerHTML.replace(re2, '<span class="highlight-reading">$1</span>');
+      if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
+    } catch(e2){}
+  }
   _lastHighlightedIdx = sIdx;
 }
 
@@ -1954,9 +2007,24 @@ function updatePlayUI(){
   if(EL.pauseIco) EL.pauseIco.style.display=playing?'block':'none';
 }
 function doAdvance(){
-  if(sIdx<sentences.length-1){ sIdx++; highlightReading(); scrollToReading(); updateProgress(); if(playing) speak(sentences[sIdx]); }
-  else if(chIdx<book.chapters.length-1){ loadChapter(chIdx+1,0); if(playing) speak(sentences[0]); }
-  else { stopSpeech(); pauseYouTube(); toast('End of book reached'); }
+  if(sIdx<sentences.length-1){
+    sIdx++;
+    highlightReading(); scrollToReading(); updateProgress();
+    if(playing) speak(sentences[sIdx]);
+  } else if(chIdx<book.chapters.length-1){
+    const wasPlaying = playing;
+    loadChapter(chIdx+1, 0);
+    // Scroll to top of new chapter
+    const scroll = document.getElementById('reader-scroll');
+    if(scroll) scroll.scrollTop = 0;
+    if(wasPlaying){
+      playing = true;
+      updatePlayUI();
+      speak(sentences[0]);
+    }
+  } else {
+    stopSpeech(); pauseYouTube(); toast('End of book reached');
+  }
 }
 function prevSentence(){ if(sIdx>0){ sIdx--; highlightReading(); scrollToReading(); updateProgress(); if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);} } }
 function nextSentence(){ window.speechSynthesis.cancel(); doAdvance(); }
@@ -1982,7 +2050,13 @@ function nextPage(){
   const target = sIdx + jump;
   if(target >= sentences.length){
     // Move to next chapter if available
-    if(chIdx < book.chapters.length - 1){ loadChapter(chIdx+1,0); if(playing) speak(sentences[0]); }
+    if(chIdx < book.chapters.length - 1){
+      const wasPlaying2 = playing;
+      loadChapter(chIdx+1,0);
+      const scroll2 = document.getElementById('reader-scroll');
+      if(scroll2) scroll2.scrollTop = 0;
+      if(wasPlaying2){ playing=true; updatePlayUI(); speak(sentences[0]); }
+    }
     else { sIdx = sentences.length-1; highlightReading(); scrollToReading(); updateProgress(); }
   } else {
     sIdx = target;
@@ -2034,12 +2108,22 @@ function loadVoices(){
     const o=document.createElement('option'); o.value=v.name; o.textContent=(neural?'★ ':'')+v.name+' ('+v.lang+')'; sel.appendChild(o);
   });
   // Restore global saved voice preference
-  const globalVoice = book?.lastVoice || localStorage.getItem('pl_voice') || saved;
+  const globalVoice = book?.lastVoice || localStorage.getItem('pl_voice');
   if(globalVoice && sorted.find(v=>v.name===globalVoice)){
     sel.value=globalVoice; selVoice=sorted.find(v=>v.name===globalVoice);
   } else {
-    const best=sorted.find(v=>isNeural(v))||sorted[0];
-    if(best){sel.value=best.name;selVoice=best;}
+    // Default for Chrome: Google UK English Female at 0.9 speed/pitch
+    const isChrome = /Chrome/.test(navigator.userAgent) && !/Edg/.test(navigator.userAgent);
+    const chromeDefault = isChrome ? sorted.find(v=>v.name==='Google UK English Female') : null;
+    const best = chromeDefault || sorted.find(v=>isNeural(v)) || sorted[0];
+    if(best){
+      sel.value=best.name; selVoice=best;
+      if(chromeDefault && !localStorage.getItem('pl_voice')){
+        // Only set defaults if user hasn't customised
+        if(!localStorage.getItem('pl_rate'))  { rate=0.9;  updateSpeedLabel(); }
+        if(!localStorage.getItem('pl_pitch')) { pitch=0.9; updatePitchLabel(); }
+      }
+    }
   }
 }
 function voiceChanged(){
@@ -2565,6 +2649,76 @@ document.addEventListener('click', e => {
     }
   }
 });
+
+
+// ═══════════════════════════════════════════
+// DELETE BOOKS MODE
+// ═══════════════════════════════════════════
+let deleteMode = false;
+let selectedForDelete = new Set();
+
+function toggleDeleteMode(){
+  deleteMode = !deleteMode;
+  selectedForDelete.clear();
+  const libView = document.getElementById('library-view');
+  const btn = document.getElementById('delete-mode-btn');
+  const countBtn = document.getElementById('delete-count-btn');
+  libView.classList.toggle('delete-mode', deleteMode);
+  btn.classList.toggle('active', deleteMode);
+  countBtn.style.display = 'none';
+  // Re-render so spines get delete-mode click handlers
+  renderLibrary();
+}
+
+function toggleBookSelect(id){
+  if(!deleteMode) return;
+  if(selectedForDelete.has(id)) selectedForDelete.delete(id);
+  else selectedForDelete.add(id);
+  // Update spine visual
+  const spine = document.querySelector(`.book-spine[data-id="${id}"]`);
+  if(spine) spine.classList.toggle('selected', selectedForDelete.has(id));
+  // Update count button
+  const countBtn = document.getElementById('delete-count-btn');
+  if(selectedForDelete.size > 0){
+    countBtn.style.display = 'block';
+    countBtn.textContent = selectedForDelete.size + ' Selected';
+  } else {
+    countBtn.style.display = 'none';
+  }
+}
+
+function confirmDeleteSelected(){
+  if(!selectedForDelete.size) return;
+  // If delete mode btn is active and count > 0, show confirm
+  openModal('modal-delete-books');
+  document.getElementById('modal-delete-msg').textContent =
+    `Delete ${selectedForDelete.size} book${selectedForDelete.size!==1?'s':''}? This cannot be undone.`;
+}
+
+async function executeDeleteSelected(){
+  closeModal('modal-delete-books');
+  for(const id of selectedForDelete){
+    await dbDel('books', id);
+    books = books.filter(b=>b.id!==id);
+  }
+  selectedForDelete.clear();
+  deleteMode = false;
+  document.getElementById('library-view').classList.remove('delete-mode');
+  document.getElementById('delete-mode-btn').classList.remove('active');
+  document.getElementById('delete-count-btn').style.display='none';
+  renderLibrary();
+  toast('Books deleted');
+}
+
+function cancelDeleteSelected(){
+  closeModal('modal-delete-books');
+  selectedForDelete.clear();
+  deleteMode = false;
+  document.getElementById('library-view').classList.remove('delete-mode');
+  document.getElementById('delete-mode-btn').classList.remove('active');
+  document.getElementById('delete-count-btn').style.display='none';
+  renderLibrary();
+}
 
 function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.toggle('show'); }
 
