@@ -1019,6 +1019,9 @@ const dbDel  = (s,k)=> new Promise((r,j)=>{ const q=txStore(s,'readwrite').delet
 // STATE
 // ═══════════════════════════════════════════
 let books=[], book=null, chIdx=0, sIdx=0, sentences=[], playing=false;
+let sentenceCache={}; // chapterIndex -> sentence array, built once per book
+let totalSentences=0, sentencesBefore=[];
+
 let rate=1.0, pitch=1.0, voices=[], selVoice=null;
 let voiceVol=1.0, ambientVol=0.4;
 let ambientSounds=[], currentAmbientId=null;
@@ -1503,10 +1506,24 @@ function openBook(id){
   sel.value=chIdx;
   document.getElementById('reader-title').textContent=book.title;
   updateSpeedLabel(); updatePitchLabel();
+  // Pre-cache sentence counts for all chapters
+  buildSentenceCache();
   showReaderView();
   loadChapter(chIdx,sIdx);
   loadVoices();
   updateZzzBtn();
+}
+
+function buildSentenceCache(){
+  sentenceCache={};
+  sentencesBefore=[];
+  totalSentences=0;
+  book.chapters.forEach((ch,i)=>{
+    const s=splitSentences(ch.text);
+    sentenceCache[i]=s;
+    sentencesBefore[i]=totalSentences;
+    totalSentences+=s.length;
+  });
 }
 
 // ═══════════════════════════════════════════
@@ -1518,7 +1535,7 @@ function loadChapter(ci,si=0){
   if(!ch) return;
   document.getElementById('chapter-select').value=ci;
   document.getElementById('prog-chapter').textContent=ch.title.slice(0,36);
-  sentences=splitSentences(ch.text);
+  sentences=sentenceCache[ci]||splitSentences(ch.text);
   const content=document.getElementById('reader-content');
   content.innerHTML=ch.html||ch.text;
   content.querySelectorAll('script,style').forEach(e=>e.remove());
@@ -1702,7 +1719,11 @@ function highlightText(text,cls){
   }
   return null;
 }
-function highlightReading(){ clearHighlight('highlight-reading'); if(sentences[sIdx]) highlightText(sentences[sIdx],'highlight-reading'); }
+let _highlightTimer=null;
+function highlightReading(){
+  clearHighlight('highlight-reading');
+  if(sentences[sIdx]) highlightText(sentences[sIdx],'highlight-reading');
+}
 function scrollToReading(){ const el=document.querySelector('.highlight-reading'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); }
 
 // ═══════════════════════════════════════════
@@ -1729,15 +1750,17 @@ function syncScrollbar(){
 // ═══════════════════════════════════════════
 // PROGRESS
 // ═══════════════════════════════════════════
+let _progressSaveTimer=null;
 function updateProgress(){
   if(!book) return;
-  let total=0,before=0;
-  book.chapters.forEach((ch,i)=>{ const n=splitSentences(ch.text).length; if(i<chIdx) before+=n; total+=n; });
-  const pct=total>0?Math.round((before+sIdx)/total*100):0;
+  const before=sentencesBefore[chIdx]||0;
+  const pct=totalSentences>0?Math.round((before+sIdx)/totalSentences*100):0;
   document.getElementById('prog-fill').style.width=pct+'%';
   document.getElementById('prog-pct').textContent=pct+'%';
   book.progress=pct; book.lastCh=chIdx; book.lastS=sIdx;
-  dbPut('books',book);
+  // Debounce DB writes — only write 1s after last update
+  clearTimeout(_progressSaveTimer);
+  _progressSaveTimer=setTimeout(()=>dbPut('books',book),1000);
   const sp=document.querySelector(`.book-spine[data-id="${book.id}"] .spine-progress-fill`);
   if(sp) sp.style.width=pct+'%';
 }
@@ -1928,7 +1951,7 @@ function doSearch(q){
   list.innerHTML=''; if(!q||q.length<2){meta.textContent='';return;}
   const lower=q.toLowerCase(); const results=[];
   book.chapters.forEach((ch,ci)=>{
-    splitSentences(ch.text).forEach((s,si)=>{
+    (sentenceCache[ci]||splitSentences(ch.text)).forEach((s,si)=>{
       if(!s.toLowerCase().includes(lower)) return;
       const mi=s.toLowerCase().indexOf(lower);
       const start=Math.max(0,mi-55),end=Math.min(s.length,mi+q.length+55);
