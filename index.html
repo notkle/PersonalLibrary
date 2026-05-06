@@ -3103,7 +3103,7 @@ function initBookDrag(spine, bookId, colorClass){
         // It was a click, not a drag
         isDragging=false; dragBookId=null;
         if(returnMode) toggleBookSelect(bookId);
-        else openBook(bookId);
+        // Don't open book from bookshelf/edit view — drag only
         return;
       }
       isDragging=false;
