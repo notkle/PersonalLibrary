@@ -733,7 +733,7 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
     </div>
     <div style="display:flex; align-items:center; gap:10px; margin-top:18px;">
       <button class="btn-delete-mode" id="delete-mode-btn" onclick="toggleDeleteMode()">Delete Books</button>
-      <button class="btn-delete-count" id="delete-count-btn" style="display:none" onclick="confirmDeleteSelected()">Remove 0</button>
+      <button class="btn-delete-count" id="delete-count-btn" style="display:none" onclick="confirmDeleteSelected()">Delete 0</button>
     </div>
   </div>
 </div>
@@ -2103,13 +2103,22 @@ function updateProgress(){
 let utt=null;
 function preprocessForTTS(text){
   if(!text) return text;
-  // Replace abbreviation periods so TTS engine doesn't pause on them
-  // e.g. "Mr. Tesla" → "Mr Tesla", "Dr. Smith" → "Dr Smith"
-  const abbrevs = /\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Ave|Blvd|Dept|Gov|Lt|Capt|Sgt|Gen|Col|Maj|Rev|Hon|Pres|Sen|Rep|vs|etc|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\./gi;
-  text = text.replace(abbrevs, '$1');
-  // Replace single initials like "J. Smith" → "J Smith"
-  text = text.replace(/\b([A-Z])\./g, '$1');
-  // Clean up any double spaces
+  // The Web Speech API pauses on ANY period it sees.
+  // Solution: remove ALL periods that are NOT true sentence endings.
+  // A true sentence ending period is followed by a space+capital or end of string.
+  
+  // Step 1: protect true sentence-ending periods with a placeholder
+  // True end = period followed by space+uppercase, or period at end of string
+  text = text.replace(/\.(?=\s+[A-Z])/g, '\x01'); // true sentence end → placeholder
+  text = text.replace(/\.$/, '\x01');               // trailing period → placeholder
+  
+  // Step 2: remove ALL remaining periods (abbreviations, Mr., Dr., decimals in names, etc.)
+  text = text.replace(/\./g, '');
+  
+  // Step 3: restore true sentence endings
+  text = text.replace(/\x01/g, '.');
+  
+  // Clean up extra spaces
   return text.replace(/  +/g, ' ').trim();
 }
 
@@ -2818,7 +2827,7 @@ function toggleBookSelect(id){
   const countBtn = document.getElementById('delete-count-btn');
   if(selectedForDelete.size > 0){
     countBtn.style.display = 'block';
-    countBtn.textContent = 'Remove ' + selectedForDelete.size;
+    countBtn.textContent = 'Delete ' + selectedForDelete.size;
   } else {
     countBtn.style.display = 'none';
   }
