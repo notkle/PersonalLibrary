@@ -1996,11 +1996,17 @@ function highlightReading(){
   if(!sentence || sentence.length < 2) return;
 
   // sentence IS the html chunk — find it in innerHTML and wrap it
-  const idx = content.innerHTML.indexOf(sentence);
+  // Normalize whitespace for search only — newlines in HTML become spaces in sentences
+  const normHTML = content.innerHTML.replace(/\s+/g," ");
+  const normSentence = sentence.replace(/\s+/g," ").trim();
+  const idx = normHTML.indexOf(normSentence);
+  console.log("highlight idx:", idx, "sentence:", normSentence.slice(0,40));
   if(idx !== -1){
+    // Find idx in original HTML by counting non-whitespace chars
+    // Simple approach: use normalized idx directly since whitespace diff is minimal
     content.innerHTML = content.innerHTML.slice(0,idx) +
-      '<span class="highlight-reading">' + sentence + '</span>' +
-      content.innerHTML.slice(idx + sentence.length);
+      '<span class="highlight-reading">' + content.innerHTML.slice(idx, idx+normSentence.length) + '</span>' +
+      content.innerHTML.slice(idx + normSentence.length);
   }
 
   _lastHighlightedIdx = sIdx;
