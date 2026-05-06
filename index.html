@@ -1518,12 +1518,38 @@ function buildSentenceCache(){
   sentenceCache={};
   sentencesBefore=[];
   totalSentences=0;
+  // Only split current chapter immediately — rest built lazily
+  const curS=splitSentences(book.chapters[chIdx]?.text||'');
+  sentenceCache[chIdx]=curS;
+  // Rough estimate total for progress bar using char count ratio
+  const totalChars=book.chapters.reduce((a,ch)=>a+(ch.text?.length||0),0);
+  const avgSentLen=curS.length>0?(book.chapters[chIdx]?.text?.length||1)/curS.length:80;
+  totalSentences=Math.round(totalChars/avgSentLen);
+  // Build sentencesBefore estimates
+  let acc=0;
   book.chapters.forEach((ch,i)=>{
-    const s=splitSentences(ch.text);
-    sentenceCache[i]=s;
-    sentencesBefore[i]=totalSentences;
-    totalSentences+=s.length;
+    sentencesBefore[i]=acc;
+    acc+=Math.round((ch.text?.length||0)/avgSentLen);
   });
+  // Build remaining chapters in background without blocking UI
+  let idx=0;
+  function buildNext(){
+    if(!book||idx>=book.chapters.length){
+      // Recalculate accurate totals once done
+      totalSentences=0;
+      book.chapters.forEach((ch,i)=>{
+        sentencesBefore[i]=totalSentences;
+        totalSentences+=(sentenceCache[i]||[]).length;
+      });
+      return;
+    }
+    if(idx!==chIdx && !sentenceCache[idx]){
+      sentenceCache[idx]=splitSentences(book.chapters[idx].text||'');
+    }
+    idx++;
+    setTimeout(buildNext,0); // yield to browser between each chapter
+  }
+  setTimeout(buildNext,100); // start after reader is visible
 }
 
 // ═══════════════════════════════════════════
@@ -1539,9 +1565,8 @@ function loadChapter(ci,si=0){
   const content=document.getElementById('reader-content');
   content.innerHTML=ch.html||ch.text;
   content.querySelectorAll('script,style').forEach(e=>e.remove());
-  _originalChapterHTML = content.innerHTML; // store clean original for fast highlight restore
+  _originalChapterHTML = content.innerHTML;
   _lastHighlightedIdx = -1;
-  attachClickToJump();
   updateScrollbar(); updateProgress(); highlightReading(); scrollToReading();
 }
 
@@ -1588,9 +1613,13 @@ function splitSentences(text){
 }
 
 function attachClickToJump(){
-  const content=document.getElementById('reader-content');
-
-  content.addEventListener('click', function handleContentClick(e){
+  // Called once at init — delegates to reader-scroll so it persists across chapter loads
+  const scroll=document.getElementById('reader-scroll');
+  if(scroll._clickJumpAttached) return;
+  scroll._clickJumpAttached=true;
+  scroll.addEventListener('click', function handleContentClick(e){
+    const content=document.getElementById('reader-content');
+    if(!content.contains(e.target)) return;
     // Get the text node at the click point
     let clickedText = '';
     const sel = window.getSelection();
@@ -2373,6 +2402,7 @@ function cacheElements(){
 async function init(){
   // Database + data
   cacheElements();
+  attachClickToJump();
   await openDB();
   books = await dbAll('books');
   books.sort((a,b) => b.addedAt - a.addedAt);
