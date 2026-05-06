@@ -1892,6 +1892,11 @@ function loadChapter(ci,si=0){
     sentenceCache[ci] = splitHtml(_originalChapterHTML);
   }
   sentences=sentenceCache[ci];
+  console.log("HTML start:", _originalChapterHTML.slice(0,300));
+  console.log("Sentence 0:", sentences[0]);
+  console.log("Sentence 1:", sentences[1]);
+  console.log("Found 0:", _originalChapterHTML.indexOf(sentences[0]));
+  console.log("Found 1:", _originalChapterHTML.indexOf(sentences[1]));
   // Derive plain text per sentence for TTS (strip tags)
   const tmp=document.createElement('div');
   sentenceTexts = sentences.map(s=>{ tmp.innerHTML=s; return tmp.textContent.trim(); });
@@ -1931,8 +1936,8 @@ function splitHtml(html){
     pos += parts[i].length;
     // skip the delimiter chars
     while(pos < html.length && /[.!?]/.test(html[pos])) pos++;
-    const trimmed = rawPart.trim();
-    if(trimmed.length > 2) result.push(trimmed);
+    const trimmed = rawPart; // no trim — preserve whitespace to match innerHTML
+    if(trimmed.trim().length > 2) result.push(trimmed);
   }
   return result;
 }
