@@ -1539,6 +1539,8 @@ function loadChapter(ci,si=0){
   const content=document.getElementById('reader-content');
   content.innerHTML=ch.html||ch.text;
   content.querySelectorAll('script,style').forEach(e=>e.remove());
+  _originalChapterHTML = content.innerHTML; // store clean original for fast highlight restore
+  _lastHighlightedIdx = -1;
   attachClickToJump();
   updateScrollbar(); updateProgress(); highlightReading(); scrollToReading();
 }
@@ -1755,8 +1757,8 @@ function updateProgress(){
   if(!book) return;
   const before=sentencesBefore[chIdx]||0;
   const pct=totalSentences>0?Math.round((before+sIdx)/totalSentences*100):0;
-  document.getElementById('prog-fill').style.width=pct+'%';
-  document.getElementById('prog-pct').textContent=pct+'%';
+  if(EL.progFill) EL.progFill.style.width=pct+'%';
+  if(EL.progPct)  EL.progPct.textContent=pct+'%';
   book.progress=pct; book.lastCh=chIdx; book.lastS=sIdx;
   // Debounce DB writes — only write 1s after last update
   clearTimeout(_progressSaveTimer);
@@ -1791,8 +1793,8 @@ function togglePlay(){
   updatePlayUI();
 }
 function updatePlayUI(){
-  document.getElementById('ico-play').style.display=playing?'none':'block';
-  document.getElementById('ico-pause').style.display=playing?'block':'none';
+  if(EL.playIco)  EL.playIco.style.display=playing?'none':'block';
+  if(EL.pauseIco) EL.pauseIco.style.display=playing?'block':'none';
 }
 function doAdvance(){
   if(sIdx<sentences.length-1){ sIdx++; highlightReading(); scrollToReading(); updateProgress(); if(playing) speak(sentences[sIdx]); }
@@ -1842,7 +1844,7 @@ function changeSpeed(dir){
   if(book){book.lastRate=rate;dbPut('books',book);}
   if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
 }
-function updateSpeedLabel(){ document.getElementById('speed-lbl').textContent=rate+'×'; }
+function updateSpeedLabel(){ if(EL.speedLbl) EL.speedLbl.textContent=rate+'×'; }
 
 function changePitch(dir){
   const i=PITCHES.findIndex(p=>p>=pitch);
@@ -1851,7 +1853,7 @@ function changePitch(dir){
   if(book){book.lastPitch=pitch;dbPut('books',book);}
   if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
 }
-function updatePitchLabel(){ document.getElementById('pitch-lbl').textContent=pitch.toFixed(1); }
+function updatePitchLabel(){ if(EL.pitchLbl) EL.pitchLbl.textContent=pitch.toFixed(1); }
 
 // ═══════════════════════════════════════════
 // VOICES
@@ -2353,8 +2355,24 @@ function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.to
 // ═══════════════════════════════════════════
 // INIT — all event listeners inside DOMContentLoaded
 // ═══════════════════════════════════════════
+// ── DOM element cache — avoid repeated getElementById in hot paths ──
+const EL = {};
+function cacheElements(){
+  EL.progFill    = document.getElementById('prog-fill');
+  EL.progPct     = document.getElementById('prog-pct');
+  EL.progChapter = document.getElementById('prog-chapter');
+  EL.readerContent = document.getElementById('reader-content');
+  EL.readerScroll  = document.getElementById('reader-scroll');
+  EL.scrollThumb   = document.getElementById('scrollbar-thumb');
+  EL.playIco  = document.getElementById('ico-play');
+  EL.pauseIco = document.getElementById('ico-pause');
+  EL.speedLbl = document.getElementById('speed-lbl');
+  EL.pitchLbl = document.getElementById('pitch-lbl');
+}
+
 async function init(){
   // Database + data
+  cacheElements();
   await openDB();
   books = await dbAll('books');
   books.sort((a,b) => b.addedAt - a.addedAt);
