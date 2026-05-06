@@ -685,8 +685,8 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
     <div class="vol-row" style="margin-top:12px">
       <span class="vol-label">Theme</span>
       <div style="display:flex;gap:8px;flex:1">
-        <button class="theme-btn theme-dark active" onclick="setTheme('dark',this)">Dark</button>
-        <button class="theme-btn theme-sepia" onclick="setTheme('sepia',this)">Sepia</button>
+        <button class="theme-btn theme-dark" onclick="setTheme('dark',this)">Dark</button>
+        <button class="theme-btn theme-sepia active" onclick="setTheme('sepia',this)">Sepia</button>
         <button class="theme-btn theme-light" onclick="setTheme('light',this)">Light</button>
       </div>
     </div>
@@ -824,8 +824,8 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
         <div class="rsp-row" style="margin-top:8px">
           <span class="rsp-label">Theme</span>
           <div class="theme-btns" style="flex:1">
-            <button class="theme-btn theme-dark p-theme-btn active" onclick="setTheme('dark',this)">Dark</button>
-            <button class="theme-btn theme-sepia p-theme-btn" onclick="setTheme('sepia',this)">Sepia</button>
+            <button class="theme-btn theme-dark p-theme-btn" onclick="setTheme('dark',this)">Dark</button>
+            <button class="theme-btn theme-sepia p-theme-btn active" onclick="setTheme('sepia',this)">Sepia</button>
             <button class="theme-btn theme-light p-theme-btn" onclick="setTheme('light',this)">Light</button>
           </div>
         </div>
@@ -923,13 +923,6 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
     Ambient
   </button>
 
-  <button class="bookmark-btn" id="bookmark-btn" onclick="handleBookmark()" title="Bookmark position">
-    <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M2 2.5C2 1.67 2.67 1 3.5 1H12.5C13.33 1 14 1.67 14 2.5V18.5L8 15L2 18.5V2.5Z"
-        stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none" id="bookmark-path"/>
-    </svg>
-  </button>
-
   <button class="dock-icon-btn" id="search-btn" onclick="toggleSearch()">
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5.5" cy="5.5" r="4"/><line x1="8.5" y1="8.5" x2="11.5" y2="11.5"/></svg>
     Search
@@ -938,6 +931,13 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
   <button class="dock-icon-btn" id="summary-btn" onclick="toggleSummaryChoice()">
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3h9M2 6h7M2 9h5" stroke-linecap="round"/><circle cx="11" cy="9.5" r="1.8" fill="none" stroke-width="1.3"/><line x1="12.3" y1="10.8" x2="13" y2="11.5" stroke-linecap="round"/></svg>
     Summary
+  </button>
+
+  <button class="bookmark-btn" id="bookmark-btn" onclick="handleBookmark()" title="Bookmark position">
+    <svg width="14" height="17" viewBox="0 0 14 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path id="bookmark-path" d="M1.5 2C1.5 1.45 1.95 1 2.5 1H11.5C12.05 1 12.5 1.45 12.5 2V15.5L7 12.5L1.5 15.5V2Z"
+        stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" fill="none"/>
+    </svg>
   </button>
 </div>
 </div>
@@ -2070,14 +2070,10 @@ function handleBookmark(){
   }
 }
 function openBookmarkModal(){
-  const m = document.getElementById('bookmark-modal');
-  m.style.display = 'flex';
-  requestAnimationFrame(() => m.classList.add('show'));
+  document.getElementById('bookmark-modal').classList.add('show');
 }
 function closeBookmarkModal(){
-  const m = document.getElementById('bookmark-modal');
-  m.classList.remove('show');
-  setTimeout(() => { m.style.display = 'none'; }, 180);
+  document.getElementById('bookmark-modal').classList.remove('show');
 }
 function bookmarkMove(){
   closeBookmarkModal();
@@ -2354,7 +2350,7 @@ function syncVolSliders() {
 function restoreAppearancePrefs() {
   const fs = localStorage.getItem('pl_fontsize')   || '18';
   const lh = localStorage.getItem('pl_lineheight') || '1.9';
-  const th = localStorage.getItem('pl_theme')      || 'dark';
+  const th = localStorage.getItem('pl_theme')      || 'sepia';
   const fsEl = document.getElementById('rsp-fontsize');
   const fsVal = document.getElementById('rsp-fontsize-val');
   if (fsEl)  fsEl.value = fs;
@@ -2616,6 +2612,7 @@ async function init(){
   restoreAppearancePrefs();
   syncVolSliders();
   restoreBrightness();
+  updateBookmarkBtn();
 
   // ── File upload ──────────────────────────────────────────────────────
   const fileInput = document.getElementById('file-input');
