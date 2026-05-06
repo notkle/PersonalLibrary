@@ -1353,25 +1353,34 @@ function goToLibrary() {
 // ═══════════════════════════════════════════
 async function parseEpub(file) {
   const zip = await JSZip.loadAsync(file);
-  const cxml = await zip.file('META-INF/container.xml').async('text');
   const parser = new DOMParser();
+
+  // ── Get OPF path ───────────────────────────────────────────────────
+  const cxml = await zip.file('META-INF/container.xml').async('text');
   const cdoc = parser.parseFromString(cxml, 'application/xml');
   const opfPath = cdoc.querySelector('rootfile').getAttribute('full-path');
-  const opfDir = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/')+1) : '';
+  const opfDir  = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/')+1) : '';
   const oxml = await zip.file(opfPath).async('text');
   const odoc = parser.parseFromString(oxml, 'application/xml');
-  const title = odoc.querySelector('title')?.textContent?.trim() || file.name.replace('.epub','');
-  const author = odoc.querySelector('creator')?.textContent?.trim() || 'Unknown';
 
+  const bookTitle = odoc.querySelector('title')?.textContent?.trim()   || file.name.replace('.epub','');
+  const author    = odoc.querySelector('creator')?.textContent?.trim() || 'Unknown';
+
+  // ── Build manifest ─────────────────────────────────────────────────
   const manifest = {};
   odoc.querySelectorAll('manifest item').forEach(it => {
-    manifest[it.getAttribute('id')] = { href: it.getAttribute('href'), mt: it.getAttribute('media-type') };
+    manifest[it.getAttribute('id')] = {
+      href: it.getAttribute('href'),
+      mt:   it.getAttribute('media-type')
+    };
   });
 
-  const spineIds = Array.from(odoc.querySelectorAll('spine itemref')).map(i => i.getAttribute('idref'));
+  // ── Get spine order ────────────────────────────────────────────────
+  const spineIds = Array.from(odoc.querySelectorAll('spine itemref'))
+    .map(i => i.getAttribute('idref'));
 
-  // ── Load all spine HTML files ──────────────────────────────────────
-  const spineFiles = [];
+  // ── Load all spine HTML files in order ────────────────────────────
+  const spineDocs = [];
   for (const id of spineIds) {
     const item = manifest[id];
     if (!item || !item.mt?.includes('html')) continue;
@@ -1381,214 +1390,130 @@ async function parseEpub(file) {
     if (!f) continue;
     const html = await f.async('text');
     const doc  = parser.parseFromString(html, 'text/html');
-    doc.querySelectorAll('script,style').forEach(e => e.remove());
-    spineFiles.push({ file: href.split('/').pop(), href, dir, doc });
+    doc.querySelectorAll('script,style,nav').forEach(e => e.remove());
+    spineDocs.push({ doc, dir, href });
   }
 
-  // ── Resolve images in parallel ─────────────────────────────────────
-  await Promise.all(spineFiles.map(async sf => {
-    const imgs = Array.from(sf.doc.querySelectorAll('img'));
+  // ── Resolve images in all docs (parallel per doc) ─────────────────
+  await Promise.all(spineDocs.map(async sd => {
+    const imgs = Array.from(sd.doc.querySelectorAll('img'));
     await Promise.all(imgs.map(async img => {
       const src = img.getAttribute('src');
       if (!src) { img.remove(); return; }
       const decoded = src.replace(/&amp;/g, '&');
-      const candidates = [opfDir+sf.dir+decoded, opfDir+decoded, sf.dir+decoded, decoded];
-      let resolved = null;
+      const candidates = [
+        opfDir + sd.dir + decoded,
+        opfDir + decoded,
+        sd.dir + decoded,
+        decoded
+      ];
+      let entry = null;
       for (const p of candidates) {
         const clean = p.replace(/[^/]+\/\.\.\//g, '');
-        const entry = zip.file(clean) || zip.file(decodeURIComponent(clean));
-        if (entry) { resolved = entry; break; }
+        entry = zip.file(clean) || zip.file(decodeURIComponent(clean));
+        if (entry) break;
       }
-      if (!resolved) { img.remove(); return; }
+      if (!entry) { img.remove(); return; }
       try {
-        const ext2 = (decoded.split('.').pop()||'jpg').toLowerCase().replace('jpg','jpeg');
-        const mimeMap = {jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'};
-        const mime = mimeMap[ext2] || 'image/jpeg';
-        const blob = await resolved.async('blob');
-        const url  = URL.createObjectURL(new Blob([blob], {type:mime}));
-        img.setAttribute('src', url);
+        const ext  = (decoded.split('.').pop()||'jpg').toLowerCase().replace('jpg','jpeg');
+        const mime = ({jpeg:'image/jpeg',png:'image/png',gif:'image/gif',
+                       webp:'image/webp',svg:'image/svg+xml'})[ext] || 'image/jpeg';
+        const blob = await entry.async('blob');
+        img.setAttribute('src', URL.createObjectURL(new Blob([blob],{type:mime})));
         img.style.cssText = 'max-width:100%;height:auto;display:block;margin:1em auto';
         img.removeAttribute('width'); img.removeAttribute('height');
       } catch(e) { img.remove(); }
     }));
   }));
 
-  // ── Find TOC page by looking for spine file with most internal links ──
-  let tocEntries = []; // [{label, file, anchor}]
-
-  // Try NCX first
-  const ncxItem = Object.values(manifest).find(m => m.mt === 'application/x-dtbncx+xml');
-  if (ncxItem) {
-    try {
-      const ncxFile = zip.file(opfDir + ncxItem.href) || zip.file(ncxItem.href);
-      if (ncxFile) {
-        const ncxXml = await ncxFile.async('text');
-        const ncxDoc = parser.parseFromString(ncxXml, 'application/xml');
-        ncxDoc.querySelectorAll('navPoint').forEach(np => {
-          const label = np.querySelector('navLabel text')?.textContent?.trim();
-          const src   = np.querySelector('content')?.getAttribute('src') || '';
-          const [f, anchor] = src.split('#');
-          if (label && f) tocEntries.push({ label, file: f.split('/').pop(), anchor: anchor||null });
-        });
-      }
-    } catch(e) {}
+  // ── STEP 1: Build one continuous body by appending all spine docs ──
+  const masterBody = document.createElement('div');
+  for (const sd of spineDocs) {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = sd.doc.body?.innerHTML || '';
+    masterBody.appendChild(wrapper);
   }
 
-  // Try scraping the Contents page from spine files (most reliable for many EPUBs)
-  // Find the spine file that looks most like a contents/TOC page
-  if (!tocEntries.length) {
-    let bestTocFile = null, bestLinkCount = 0;
-    for (const sf of spineFiles) {
-      const links = Array.from(sf.doc.querySelectorAll('a[href]'));
-      // A TOC page has many links, most pointing to other files or anchors
-      const internalLinks = links.filter(a => {
-        const href = a.getAttribute('href')||'';
-        return href && !href.startsWith('http') && a.textContent.trim().length > 1;
-      });
-      if (internalLinks.length > bestLinkCount) {
-        bestLinkCount = internalLinks.length;
-        bestTocFile = { sf, links: internalLinks };
-      }
-    }
-
-    if (bestTocFile && bestLinkCount >= 3) {
-      const seen = new Set();
-      bestTocFile.links.forEach(a => {
-        const label = a.textContent.trim();
-        if (!label || label.length > 100 || label.length < 1) return;
-        const href  = (a.getAttribute('href')||'').split('?')[0];
-        if (!href) return;
-        const [f, anchor] = href.split('#');
-        // Resolve filename - handle relative paths like "../Text/chapter1.html"
-        const rawFile = f || '';
-        const fileName = rawFile.split('/').pop() || bestTocFile.sf.file;
-        const key = fileName + '#' + (anchor||'');
-        if (seen.has(key)) return; // deduplicate
-        seen.add(key);
-        // Skip if this link points to the TOC file itself with no anchor
-        if (fileName === bestTocFile.sf.file && !anchor) return;
-        tocEntries.push({ label, file: fileName, anchor: anchor||null });
-      });
-    }
-  }
-
-  // ── Build a flat DOM index: for each spine file, map anchor->element ──
-  const fileIndex = {}; // filename -> {doc, elements: [{id, el}]}
-  spineFiles.forEach(sf => {
-    const elements = [];
-    sf.doc.body?.querySelectorAll('[id],[name]').forEach(el => {
-      const id = el.id || el.getAttribute('name');
-      if (id) elements.push({ id, el });
+  // ── STEP 2: Scan for headings — each is a chapter boundary ─────────
+  // Collect all h1/h2 elements that look like chapter titles
+  const headingEls = Array.from(masterBody.querySelectorAll('h1, h2'))
+    .filter(h => {
+      const t = h.textContent?.trim() || '';
+      return t.length >= 2 && t.length <= 120 && /[a-zA-Z0-9]/.test(t);
     });
-    fileIndex[sf.file] = { doc: sf.doc, dir: sf.dir, elements, sf };
-  });
 
-  // ── Extract text helper ────────────────────────────────────────────
-  const extractText = (container) => {
-    if (!container) return '';
-    const clone = container.cloneNode(true);
+  // ── STEP 3: Extract text for TTS (no headings, no images) ──────────
+  const extractText = (el) => {
+    const clone = el.cloneNode(true);
     clone.querySelectorAll('h1,h2,h3,h4,h5,h6,nav,aside,figcaption').forEach(e => e.remove());
     clone.querySelectorAll('img').forEach(i => i.replaceWith(document.createTextNode(' ')));
-    return (clone.textContent||'').replace(/\s+/g,' ').trim();
+    return (clone.textContent || '').replace(/\s+/g, ' ').trim();
   };
 
-  // ── Build chapters from TOC entries ───────────────────────────────
+  // ── STEP 4: Split masterBody into chapters at each heading ─────────
   const chapters = [];
 
-  if (tocEntries.length >= 2) {
-    for (let i = 0; i < tocEntries.length; i++) {
-      const entry     = tocEntries[i];
-      const nextEntry = tocEntries[i+1] || null;
-      const fi        = fileIndex[entry.file];
-      if (!fi) continue;
+  if (headingEls.length >= 2) {
+    for (let i = 0; i < headingEls.length; i++) {
+      const heading     = headingEls[i];
+      const nextHeading = headingEls[i + 1] || null;
+      const chTitle     = heading.textContent.trim();
 
-      let chHTML = '', chText = '';
-
-      if (!entry.anchor && (!nextEntry || nextEntry.file !== entry.file)) {
-        // Whole file = this chapter
-        chHTML = fi.sf.doc.body.innerHTML;
-        chText = extractText(fi.sf.doc.body);
-      } else {
-        // Extract from anchor to next anchor
-        const startId = entry.anchor;
-        const endId   = (nextEntry?.file === entry.file) ? nextEntry.anchor : null;
-
-        const body = fi.sf.doc.body;
-        if (!startId) {
-          chHTML = body.innerHTML;
-          chText = extractText(body);
-        } else {
-          // Collect all elements from startEl to endEl
-          const startEl = startId ? (body.querySelector('#'+CSS.escape(startId)) || body.querySelector('[name="'+startId+'"]')) : null;
-          const endEl   = endId   ? (body.querySelector('#'+CSS.escape(endId))   || body.querySelector('[name="'+endId+'"]'))   : null;
-
-          if (!startEl) {
-            // Anchor not found — try finding by name attribute
-            const byName = body.querySelector('[name="'+startId+'"]');
-            if (!byName && (i === 0 || tocEntries[i-1]?.file !== entry.file)) {
-              chHTML = body.innerHTML;
-              chText = extractText(body);
-            } else if (byName) {
-              const div = document.createElement('div');
-              let node = byName;
-              while (node) {
-                if (endEl && node === endEl) break;
-                div.appendChild(node.cloneNode(true));
-                node = node.nextElementSibling;
-              }
-              chHTML = div.innerHTML;
-              chText = extractText(div);
-            } else continue;
-          } else {
-            // startEl found — collect from startEl's parent block if it's inline
-            // (handles anchors that are inside <p> or <h> tags)
-            let startNode = startEl;
-            // If anchor is inline (a, span), go up to block parent
-            const inlineTags = new Set(['A','SPAN','EM','STRONG','B','I','SMALL']);
-            while(startNode.parentElement && startNode.parentElement !== body && inlineTags.has(startNode.nodeName)){
-              startNode = startNode.parentElement;
-            }
-            const div = document.createElement('div');
-            let node = startNode;
-            while (node) {
-              if (endEl) {
-                // Check if endEl is inside this node
-                let checkNode = endEl;
-                while(checkNode && checkNode !== body){
-                  if(checkNode === node){ node=null; break; }
-                  checkNode = checkNode.parentElement;
-                }
-                if(!node) break;
-              }
-              div.appendChild(node.cloneNode(true));
-              node = node.nextElementSibling;
-            }
-            chHTML = div.innerHTML;
-            chText = extractText(div);
-          }
-        }
+      // Collect all nodes from this heading to the next
+      const frag = document.createElement('div');
+      let node = heading; // include the heading itself in HTML (for display)
+      while (node) {
+        if (nextHeading && node === nextHeading) break;
+        frag.appendChild(node.cloneNode(true));
+        // Walk to next sibling — but headings may be inside wrappers
+        // so we need to find the next node in document order
+        node = nextSiblingInContainer(node, masterBody, nextHeading);
+        if (!node) break;
       }
 
-      if (chText.length < 30) continue;
-      chapters.push({ title: entry.label, html: chHTML, text: chText });
+      const html = frag.innerHTML;
+      const text = extractText(frag);
+      if (text.length < 20) continue;
+      chapters.push({ title: chTitle, html, text });
     }
   }
 
-  // ── Fallback: use spine files directly ─────────────────────────────
+  // ── Fallback: no headings found — use each spine doc as a chapter ──
   if (chapters.length < 2) {
     chapters.length = 0;
     let chNum = 0;
-    for (const sf of spineFiles) {
-      const text = extractText(sf.doc.body);
+    for (const sd of spineDocs) {
+      const text = extractText(sd.doc.body || sd.doc.documentElement);
       if (text.length < 60) continue;
-      const heading = Array.from(sf.doc.querySelectorAll('h1,h2,h3'))
-        .find(h => { const t=h.textContent?.trim(); return t&&t.length>2&&t.length<100&&/[a-zA-Z]/.test(t); });
-      const chTitle = heading?.textContent?.trim() || ('Chapter '+(++chNum));
-      chapters.push({ title: chTitle, html: sf.doc.body.innerHTML, text });
+      const h = sd.doc.querySelector('h1,h2,h3');
+      const chTitle = h?.textContent?.trim() || ('Chapter ' + (++chNum));
+      chapters.push({ title: chTitle, html: sd.doc.body?.innerHTML || text, text });
     }
   }
 
-  return { title, author, chapters };
+  return { title: bookTitle, author, chapters };
+}
+
+// Walk to the next node in document order within a container,
+// stopping before a specific target element
+function nextSiblingInContainer(node, container, stopAt) {
+  // Try next sibling first
+  if (node.nextElementSibling) {
+    if (stopAt && node.nextElementSibling === stopAt) return null;
+    return node.nextElementSibling;
+  }
+  // Walk up and try parent's next sibling
+  let parent = node.parentElement;
+  while (parent && parent !== container) {
+    if (parent.nextElementSibling) {
+      if (stopAt && parent.nextElementSibling === stopAt) return null;
+      // Check if stopAt is inside parent.nextElementSibling
+      if (stopAt && parent.nextElementSibling.contains(stopAt)) return null;
+      return parent.nextElementSibling;
+    }
+    parent = parent.parentElement;
+  }
+  return null;
 }
 async function parseTxt(file){
   const text=await file.text();
