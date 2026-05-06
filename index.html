@@ -1884,9 +1884,9 @@ function loadChapter(ci,si=0){
     el.replaceWith(h);
   });
 
-  // Build sentences from actual DOM text so indexOf matches exactly
-  const domText = content.textContent || "";
-  sentences = splitSentences(domText);
+  // Build sentences from innerHTML with entities decoded — matches what replace() searches
+  const tmp = document.createElement("div"); tmp.innerHTML = _originalChapterHTML;
+  sentences = splitSentences(tmp.textContent || "");
   sentenceCache[ci] = sentences;
   _originalChapterHTML = content.innerHTML;
   _lastHighlightedIdx = -1;
@@ -1957,8 +1957,10 @@ function highlightReading(){
   if(!sentence || sentence.length < 2) return;
 
   // Simple innerHTML replace — sentence string guaranteed to exist in the HTML text
-  const escaped = sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp('(' + escaped + ')', '');
+  // Encode sentence to match innerHTML entities using a temp element
+  const enc = document.createElement("p"); enc.textContent = sentence;
+  const encodedSentence = enc.innerHTML;
+  const re = new RegExp("(" + encodedSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "");
   const newHTML = content.innerHTML.replace(re, '<span class="highlight-reading">$1</span>');
   if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
 
