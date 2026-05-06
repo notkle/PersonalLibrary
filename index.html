@@ -1890,7 +1890,7 @@ function buildSentenceCache(){
       return;
     }
     if(idx!==chIdx && !sentenceCache[idx]){
-      sentenceCache[idx]=splitSentences(book.chapters[idx].text||''); // plain text for progress estimates only
+      // sentenceCache[idx] left empty — loadChapter will populate via splitHtml when chapter is opened
     }
     idx++;
     setTimeout(buildNext,0); // yield to browser between each chapter
