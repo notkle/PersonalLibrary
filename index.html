@@ -1853,45 +1853,73 @@ function highlightReading(){
   const words = clean.split(' ').filter(w=>w.length>0);
   if(!words.length) return;
 
-  // Try progressively fewer words until we find a match in a text node
-  const counts = [...new Set([words.length, 8, 5, 3, 1])].filter(n=>n<=words.length);
+  // Collect all text nodes (skip headings)
+  const textNodes = [];
+  const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+  let node;
+  while(node = walker.nextNode()){
+    let p = node.parentNode, inH = false;
+    while(p && p !== content){ if(/^H[1-6]$/.test(p.nodeName)){inH=true;break;} p=p.parentNode; }
+    if(!inH && node.nodeValue.trim()) textNodes.push(node);
+  }
+
+  // Build a flat normalized string from all text nodes with node boundaries tracked
+  // This lets us find a sentence that spans multiple nodes (across <em>, <strong>, etc.)
+  const segments = textNodes.map(n => ({ node: n, text: normalizeWS(n.nodeValue) }));
+  const joined = segments.map(s => s.text).join(' ');
+  const joinedLower = joined.toLowerCase();
+
+  // Try progressively shorter prefixes of the sentence
+  const counts = [...new Set([words.length, Math.min(10,words.length), Math.min(6,words.length), Math.min(3,words.length)])].filter(n=>n>=1&&n<=words.length);
+
   for(const n of counts){
-    const target = words.slice(0,n).join(' ');
+    const target = words.slice(0,n).join(' ').toLowerCase();
     if(target.length < 2) continue;
-    // Walk text nodes, skip those inside headings
-    const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
-    let node;
-    while(node = walker.nextNode()){
-      // Skip text inside heading elements
-      let p = node.parentNode;
-      let inHeading = false;
-      while(p && p !== content){ if(/^H[1-6]$/.test(p.nodeName)){inHeading=true;break;} p=p.parentNode; }
-      if(inHeading) continue;
-      const norm = normalizeWS(node.nodeValue);
-      const idx = norm.toLowerCase().indexOf(target.toLowerCase());
-      if(idx === -1) continue;
-      // Found — split this text node and wrap match in span
-      const raw = node.nodeValue;
-      // Find raw index corresponding to normalized idx
-      let ri=0, ni=0;
-      while(ri<raw.length && ni<idx){
-        if(/\s/.test(raw[ri])){ while(ri<raw.length&&/\s/.test(raw[ri]))ri++; ni++; }
-        else{ ri++; ni++; }
+    const idx = joinedLower.indexOf(target);
+    if(idx === -1) continue;
+
+    // Found in joined string — now find which node(s) contain position idx
+    // Walk segments to find the node that contains the start of the match
+    let pos = 0;
+    for(let si = 0; si < segments.length; si++){
+      const seg = segments[si];
+      const segStart = pos;
+      const segEnd   = pos + seg.text.length;
+
+      if(idx >= segStart && idx < segEnd){
+        // Match starts in this segment — highlight just this node's portion
+        const localIdx = idx - segStart;
+        const localEnd = Math.min(localIdx + target.length, seg.text.length);
+
+        // Map normalized localIdx back to raw node value
+        const raw = seg.node.nodeValue;
+        let ri=0, ni=0;
+        while(ri<raw.length && ni<localIdx){
+          if(/[\s ]/.test(raw[ri])){ while(ri<raw.length&&/[\s ]/.test(raw[ri]))ri++; ni++; }
+          else{ ri++; ni++; }
+        }
+        // Find end: advance ni to localEnd
+        let re2=ri, ne=ni;
+        while(re2<raw.length && ne<localEnd){
+          if(/[\s ]/.test(raw[re2])){ while(re2<raw.length&&/[\s ]/.test(raw[re2]))re2++; ne++; }
+          else{ re2++; ne++; }
+        }
+        // Clamp to actual raw length
+        re2 = Math.min(re2, raw.length);
+        if(ri >= re2) break;
+
+        const span = document.createElement('span');
+        span.className = 'highlight-reading';
+        span.textContent = raw.slice(ri, re2);
+        const par = seg.node.parentNode;
+        if(!par) break;
+        if(ri > 0) par.insertBefore(document.createTextNode(raw.slice(0,ri)), seg.node);
+        par.insertBefore(span, seg.node);
+        if(re2 < raw.length) par.insertBefore(document.createTextNode(raw.slice(re2)), seg.node);
+        par.removeChild(seg.node);
+        return;
       }
-      let re2=ri, ne=ni;
-      while(re2<raw.length && ne<idx+target.length){
-        if(/\s/.test(raw[re2])){ while(re2<raw.length&&/\s/.test(raw[re2]))re2++; ne++; }
-        else{ re2++; ne++; }
-      }
-      const span = document.createElement('span');
-      span.className = 'highlight-reading';
-      span.textContent = raw.slice(ri, re2);
-      const par = node.parentNode;
-      if(ri>0) par.insertBefore(document.createTextNode(raw.slice(0,ri)), node);
-      par.insertBefore(span, node);
-      if(re2<raw.length) par.insertBefore(document.createTextNode(raw.slice(re2)), node);
-      par.removeChild(node);
-      return;
+      pos = segEnd + 1; // +1 for the space we joined with
     }
   }
   _lastHighlightedIdx = sIdx;
