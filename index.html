@@ -1886,7 +1886,7 @@ function loadChapter(ci,si=0){
   const content=document.getElementById('reader-content');
   content.innerHTML=ch.html||ch.text;
   content.querySelectorAll('script,style').forEach(e=>e.remove());
-  _originalChapterHTML=content.innerHTML;
+  _originalChapterHTML=content.innerHTML.replace(/\s+/g," ");
   // Split the actual HTML — sentences are HTML chunks, no matching needed
   if(!sentenceCache[ci]){
     sentenceCache[ci] = splitHtml(_originalChapterHTML);
@@ -1990,19 +1990,19 @@ function highlightReading(){
   if(!content) return;
 
   // Restore clean HTML (blob URLs survive this since we never revokeObjectURL)
-  if(_originalChapterHTML) content.innerHTML = _originalChapterHTML;
+  // no innerHTML restore — blob URLs must stay intact
 
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
 
   // sentence IS the html chunk — find it in innerHTML and wrap it
-  // Normalize whitespace for search only — newlines in HTML become spaces in sentences
-  const normHTML = content.innerHTML.replace(/\s+/g," ");
   const normSentence = sentence.replace(/\s+/g," ").trim();
-  const idx = normHTML.indexOf(normSentence);
-  console.log("highlight idx:", idx, "sentence:", normSentence.slice(0,40));
+  const idx = content.innerHTML.indexOf(normSentence);
+  console.log("highlight idx:", idx, "s:", normSentence.slice(0,40));
   if(idx !== -1){
-    // Find idx in original HTML by counting non-whitespace chars
+    content.innerHTML = content.innerHTML.slice(0,idx) +
+      '<span class="highlight-reading">' + normSentence + '</span>' +
+      content.innerHTML.slice(idx + normSentence.length);
     // Simple approach: use normalized idx directly since whitespace diff is minimal
     content.innerHTML = content.innerHTML.slice(0,idx) +
       '<span class="highlight-reading">' + content.innerHTML.slice(idx, idx+normSentence.length) + '</span>' +
