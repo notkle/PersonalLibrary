@@ -1163,7 +1163,7 @@ const dbDel  = (s,k)=> new Promise((r,j)=>{ const q=txStore(s,'readwrite').delet
 // ═══════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════
-let books=[], book=null, chIdx=0, sIdx=0, sentences=[], playing=false;
+let books=[], book=null, chIdx=0, sIdx=0, sentences=[], sentenceTexts=[], playing=false;
 let sentenceCache={}; // chapterIndex -> sentence array, built once per book
 let totalSentences=0, sentencesBefore=[];
 
@@ -1887,8 +1887,14 @@ function loadChapter(ci,si=0){
   content.innerHTML=ch.html||ch.text;
   content.querySelectorAll('script,style').forEach(e=>e.remove());
   _originalChapterHTML=content.innerHTML;
-  sentences=sentenceCache[ci]||splitSentences(ch.text);
-  sentenceCache[ci]=sentences;
+  // Split the actual HTML — sentences are HTML chunks, no matching needed
+  if(!sentenceCache[ci]){
+    sentenceCache[ci] = splitHtml(_originalChapterHTML);
+  }
+  sentences=sentenceCache[ci];
+  // Derive plain text per sentence for TTS (strip tags)
+  const tmp=document.createElement('div');
+  sentenceTexts = sentences.map(s=>{ tmp.innerHTML=s; return tmp.textContent.trim(); });
   _lastHighlightedIdx=-1;
   updateScrollbar(); updateProgress(); highlightReading();
   const scroll=document.getElementById('reader-scroll');
@@ -1896,9 +1902,39 @@ function loadChapter(ci,si=0){
 }
 
 
-function splitSentences(text){
+function splitSentences(text){ // kept for search/TTS fallback
   if(!text) return [];
   return text.split(/[.!?]+/).map(s=>s.trim()).filter(s=>s.length>2);
+}
+
+function splitHtml(html){
+  if(!html) return [];
+  // Replace .!? inside HTML tags with placeholder so we don't split on them
+  const HOLDER = '';
+  let safe = '';
+  let inTag = false;
+  for(let i=0;i<html.length;i++){
+    const ch = html[i];
+    if(ch==='<') inTag=true;
+    if(ch==='>') inTag=false;
+    if(inTag && (ch==='.'||ch==='!'||ch==='?')) safe+=HOLDER;
+    else safe+=ch;
+  }
+  // Split on sentence-ending punctuation
+  const parts = safe.split(/[.!?]+/);
+  // Restore placeholders and reconstruct with punctuation
+  const result = [];
+  let pos = 0;
+  for(let i=0;i<parts.length;i++){
+    const part = parts[i].replace(new RegExp(HOLDER,'g'),'.');
+    const rawPart = html.slice(pos, pos+parts[i].length);
+    pos += parts[i].length;
+    // skip the delimiter chars
+    while(pos < html.length && /[.!?]/.test(html[pos])) pos++;
+    const trimmed = rawPart.trim();
+    if(trimmed.length > 2) result.push(trimmed);
+  }
+  return result;
 }
 
 function attachClickToJump(){
@@ -1934,7 +1970,7 @@ function attachClickToJump(){
     sIdx = bestIdx;
     highlightReading();
     updateProgress();
-    if(playing){ window.speechSynthesis.cancel(); speak(sentences[sIdx]); }
+    if(playing){ window.speechSynthesis.cancel(); speak(sentenceTexts[sIdx]||""); }
   });
 }
 
@@ -1954,10 +1990,13 @@ function highlightReading(){
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
 
-  const esc = sentence.replace(/[.*+?^${}()|[\]\\]/g,'\$&');
-  const re = new RegExp('('+esc+')','');
-  const newHTML = content.innerHTML.replace(re,'<span class="highlight-reading">$1</span>');
-  if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
+  // sentence IS the html chunk — find it in innerHTML and wrap it
+  const idx = content.innerHTML.indexOf(sentence);
+  if(idx !== -1){
+    content.innerHTML = content.innerHTML.slice(0,idx) +
+      '<span class="highlight-reading">' + sentence + '</span>' +
+      content.innerHTML.slice(idx + sentence.length);
+  }
 
   _lastHighlightedIdx = sIdx;
 }
@@ -2033,7 +2072,7 @@ function togglePlay(){
   } else if(playing){
     window.speechSynthesis.pause(); playing=false; pauseYouTube();
   } else {
-    playing=true; speak(sentences[sIdx]); resumeYouTube();
+    playing=true; speak(sentenceTexts[sIdx]||""); resumeYouTube();
   }
   updatePlayUI();
 }
@@ -2045,7 +2084,7 @@ function doAdvance(){
   if(sIdx<sentences.length-1){
     sIdx++;
     highlightReading(); scrollToReading(); updateProgress();
-    if(playing) speak(sentences[sIdx]);
+    if(playing) speak(sentenceTexts[sIdx]||"");
   } else if(chIdx<book.chapters.length-1){
     const wasPlaying = playing;
     loadChapter(chIdx+1, 0);
@@ -2055,13 +2094,13 @@ function doAdvance(){
     if(wasPlaying){
       playing = true;
       updatePlayUI();
-      speak(sentences[0]);
+      speak(sentenceTexts[0]||"");
     }
   } else {
     stopSpeech(); pauseYouTube(); toast('End of book reached');
   }
 }
-function prevSentence(){ if(sIdx>0){ sIdx--; highlightReading(); scrollToReading(); updateProgress(); if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);} } }
+function prevSentence(){ if(sIdx>0){ sIdx--; highlightReading(); scrollToReading(); updateProgress(); if(playing){window.speechSynthesis.cancel();speak(sentenceTexts[sIdx]||"");} } }
 function nextSentence(){ window.speechSynthesis.cancel(); doAdvance(); }
 
 function pageSize(){
@@ -2078,7 +2117,7 @@ function prevPage(){
   const jump = pageSize();
   sIdx = Math.max(0, sIdx - jump);
   highlightReading(); scrollToReading(); updateProgress();
-  if(playing){ window.speechSynthesis.cancel(); speak(sentences[sIdx]); }
+  if(playing){ window.speechSynthesis.cancel(); speak(sentenceTexts[sIdx]||""); }
 }
 function nextPage(){
   const jump = pageSize();
@@ -2090,13 +2129,13 @@ function nextPage(){
       loadChapter(chIdx+1,0);
       const scroll2 = document.getElementById('reader-scroll');
       if(scroll2) scroll2.scrollTop = 0;
-      if(wasPlaying2){ playing=true; updatePlayUI(); speak(sentences[0]); }
+      if(wasPlaying2){ playing=true; updatePlayUI(); speak(sentenceTexts[0]||""); }
     }
     else { sIdx = sentences.length-1; highlightReading(); scrollToReading(); updateProgress(); }
   } else {
     sIdx = target;
     highlightReading(); scrollToReading(); updateProgress();
-    if(playing){ window.speechSynthesis.cancel(); speak(sentences[sIdx]); }
+    if(playing){ window.speechSynthesis.cancel(); speak(sentenceTexts[sIdx]||""); }
   }
 }
 
@@ -2109,7 +2148,7 @@ function changeSpeed(dir){
   updateSpeedLabel();
   localStorage.setItem('pl_rate', rate);
   if(book){book.lastRate=rate;dbPut('books',book);}
-  if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
+  if(playing){window.speechSynthesis.cancel();speak(sentenceTexts[sIdx]||"");}
 }
 function updateSpeedLabel(){ if(EL.speedLbl) EL.speedLbl.textContent=rate+'×'; const _psl=document.getElementById('p-speed-lbl'); if(_psl) _psl.textContent=rate+'×'; }
 
@@ -2119,7 +2158,7 @@ function changePitch(dir){
   updatePitchLabel();
   localStorage.setItem('pl_pitch', pitch);
   if(book){book.lastPitch=pitch;dbPut('books',book);}
-  if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
+  if(playing){window.speechSynthesis.cancel();speak(sentenceTexts[sIdx]||"");}
 }
 function updatePitchLabel(){ if(EL.pitchLbl) EL.pitchLbl.textContent=pitch.toFixed(1); const _ppl=document.getElementById('p-pitch-lbl'); if(_ppl) _ppl.textContent=pitch.toFixed(1); }
 
@@ -2176,7 +2215,7 @@ function voiceChanged(){
   selVoice=voices.find(v=>v.name===name)||null;
   localStorage.setItem('pl_voice', name);
   if(book){book.lastVoice=name;dbPut('books',book);}
-  if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
+  if(playing){window.speechSynthesis.cancel();speak(sentenceTexts[sIdx]||"");}
 }
 
 // ═══════════════════════════════════════════
@@ -2209,7 +2248,7 @@ function bookmarkMove(){
   const tCh=sleepChIdx, tS=sleepSIdx;
   if(tCh!==chIdx) loadChapter(tCh,tS);
   else { sIdx=tS; highlightReading(); scrollToReading(); updateProgress(); }
-  if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
+  if(playing){window.speechSynthesis.cancel();speak(sentenceTexts[sIdx]||"");}
 }
 function bookmarkReset(){
   closeBookmarkModal();
@@ -2258,7 +2297,7 @@ function doSearch(q){
   list.innerHTML=''; if(!q||q.length<2){meta.textContent='';return;}
   const lower=q.toLowerCase(); const results=[];
   book.chapters.forEach((ch,ci)=>{
-    (sentenceCache[ci]||splitSentences(ch.text)).forEach((s,si)=>{
+    (sentenceCache[ci]||[]).forEach((s,si)=>{ const s_text = (function(){const t=document.createElement("div");t.innerHTML=s;return t.textContent.trim();})();
       if(!s.toLowerCase().includes(lower)) return;
       const mi=s.toLowerCase().indexOf(lower);
       const start=Math.max(0,mi-55),end=Math.min(s.length,mi+q.length+55);
@@ -2289,7 +2328,7 @@ function seekProgress(e){
   const pct=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
   sIdx=Math.floor(pct*sentences.length);
   highlightReading(); scrollToReading(); updateProgress();
-  if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
+  if(playing){window.speechSynthesis.cancel();speak(sentenceTexts[sIdx]||"");}
 }
 
 let dockCollapsed = localStorage.getItem('pl_dock_collapsed') === 'true';
@@ -2408,7 +2447,7 @@ function voiceChangedPanel(name){
   if(mainSel) mainSel.value=name;
   selVoice=voices.find(v=>v.name===name)||null;
   if(book){book.lastVoice=name;dbPut('books',book);}
-  if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
+  if(playing){window.speechSynthesis.cancel();speak(sentenceTexts[sIdx]||"");}
 }
 
 function renderPanelAmbientList(){
