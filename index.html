@@ -613,6 +613,47 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
   .reader-scroll{padding:36px 56px}
   .search-panel.open{width:260px}
 }
+
+/* ── BOOKMARK BUTTON ── */
+.bookmark-btn {
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(200,144,42,0.07);
+  border: 1px solid rgba(200,144,42,0.22);
+  color: var(--amber-light);
+  border-radius: 3px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.bookmark-btn:hover { background: rgba(200,144,42,0.15); border-color: var(--amber); }
+.bookmark-btn.saved { background: rgba(200,144,42,0.2); border-color: var(--amber); }
+.bookmark-btn.saved svg path { fill: var(--amber-light); }
+
+/* ── BOOKMARK MODAL ── */
+.bookmark-modal {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1a1208;
+  border: 1px solid rgba(200,144,42,0.3);
+  border-radius: 8px;
+  padding: 22px 24px 20px;
+  width: 280px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+  z-index: 3000;
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+}
+.bookmark-modal.show { display: flex; }
+.bookmark-modal-header { display:flex; align-items:center; justify-content:space-between; }
+.bookmark-modal-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--amber-light); font-weight:400; }
+.bookmark-modal-x { background:none; border:none; color:rgba(200,144,42,0.4); cursor:pointer; font-size:1.1rem; line-height:1; transition:color 0.15s; }
+.bookmark-modal-x:hover { color:var(--amber-light); }
+.bookmark-modal-msg { font-size:0.88rem; color:var(--paper-dark); line-height:1.6; }
+.bookmark-modal-btns { display:flex; gap:8px; }
+.bookmark-modal-btns .btn { flex:1; text-align:center; }
 </style>
 </head>
 <body class="in-library">
@@ -638,6 +679,7 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
     </svg>
   </div>
   <div class="header-right">
+    <button class="btn btn-ghost" id="bookshelf-btn" onclick="showBookshelfView()">📚 Bookshelf</button>
     <button class="btn btn-ghost" id="settings-btn" onclick="showSettingsView()">⚙ Settings</button>
     <button class="btn btn-ghost" id="back-btn" style="display:none" onclick="goToLibrary()">← Library</button>
   </div>
@@ -646,13 +688,7 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
 
 <!-- LIBRARY -->
 <div id="library-view" class="view active">
-  <div class="lib-header">
-    <div class="lib-sub" id="lib-count">No books yet</div>
-    <div class="lib-actions" id="lib-actions">
-      <button class="btn-delete-mode" id="delete-mode-btn" onclick="toggleDeleteMode()">Delete Books</button>
-      <button class="btn-delete-count" id="delete-count-btn" style="display:none" onclick="confirmDeleteSelected()">0 Selected</button>
-    </div>
-  </div>
+  <div class="lib-sub" id="lib-count">No books yet</div>
   <div class="shelf-wrap">
     <div class="books-row" id="books-row">
       <div class="empty-shelf" id="empty-shelf">
@@ -673,6 +709,34 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
     <h3>Drop books here to add them</h3>
     <p>or click to browse your files</p>
     <div class="upload-formats">EPUB · TXT · HTML</div>
+  </div>
+</div>
+
+<!-- BOOKSHELF VIEW -->
+<div id="bookshelf-view" class="view">
+  <div style="padding:36px 36px 120px; overflow-y:auto; height:100%; background:var(--bg);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:32px;">
+      <div>
+        <h1 style="font-family:'Playfair Display',serif; font-size:1.9rem; color:var(--paper); font-weight:400;">Your <em style="color:var(--amber-light);font-style:italic">Bookshelf</em></h1>
+        <div class="lib-sub" id="bookshelf-count" style="margin-top:4px"></div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="btn-delete-mode" id="delete-mode-btn" onclick="toggleDeleteMode()">Delete Books</button>
+        <button class="btn-delete-count" id="delete-count-btn" style="display:none" onclick="confirmDeleteSelected()">0 Selected</button>
+      </div>
+    </div>
+    <div class="shelf-wrap">
+      <div class="books-row" id="bookshelf-row">
+        <div class="empty-shelf" id="bookshelf-empty">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="opacity:0.25">
+            <rect x="6" y="8" width="16" height="24" rx="2" stroke="#c8902a" stroke-width="1.4"/>
+            <rect x="10" y="8" width="16" height="24" rx="2" stroke="#c8902a" stroke-width="1.4" opacity="0.5"/>
+          </svg>
+          No books in your library yet
+        </div>
+      </div>
+      <div class="shelf-plank"></div>
+    </div>
   </div>
 </div>
 
@@ -1753,12 +1817,40 @@ function loadChapter(ci,si=0){
   const content=document.getElementById('reader-content');
   content.innerHTML=ch.html||ch.text;
   content.querySelectorAll('script,style').forEach(e=>e.remove());
-  // Remove hyperlinks and footnote superscripts from display
+  // Remove hyperlinks completely:
+  // - If the link text is purely numeric/punctuation (footnote ref) — delete entirely
+  // - If the link has real text — keep text, remove tag
   content.querySelectorAll('a').forEach(a=>{
-    // Replace link with its text content only
-    a.replaceWith(document.createTextNode(a.textContent||''));
+    const txt = a.textContent.trim();
+    const isFootnote = /^[\d\s\[\]\(\)\*†‡§#\.]+$/.test(txt) || txt.length === 0;
+    if(isFootnote) a.remove();
+    else a.replaceWith(document.createTextNode(txt));
   });
+  // Remove superscript/subscript footnote numbers entirely
   content.querySelectorAll('sup,sub').forEach(e=>e.remove());
+
+  // ROOT FIX: Promote fake headings to proper <h2> elements.
+  // Publishers often use <p> with all-caps, bold, or heading-class text
+  // instead of semantic <h> tags. Detect and convert them.
+  content.querySelectorAll('p, div').forEach(el => {
+    const txt = el.textContent.trim();
+    if(!txt || txt.length > 80 || txt.length < 2) return;
+    const style = window.getComputedStyle(el);
+    const isAllCaps = txt === txt.toUpperCase() && /[A-Z]/.test(txt);
+    const isBold = style.fontWeight >= 600 || el.querySelector('b,strong');
+    const hasHeadingClass = /title|heading|chapter|header/i.test(el.className||'');
+    // Only promote if it looks like a standalone title line
+    const looksLikeHeading = (isAllCaps || hasHeadingClass) &&
+      !el.closest('h1,h2,h3,h4,h5,h6') &&
+      el.tagName !== 'H1' && el.tagName !== 'H2' && el.tagName !== 'H3';
+    if(looksLikeHeading){
+      const h = document.createElement('h2');
+      h.innerHTML = el.innerHTML;
+      h.className = el.className;
+      el.replaceWith(h);
+    }
+  });
+
   _originalChapterHTML = content.innerHTML;
   _lastHighlightedIdx = -1;
 
@@ -2608,14 +2700,13 @@ let selectedForDelete = new Set();
 function toggleDeleteMode(){
   deleteMode = !deleteMode;
   selectedForDelete.clear();
-  const libView = document.getElementById('library-view');
+  const bsView = document.getElementById('bookshelf-view');
   const btn = document.getElementById('delete-mode-btn');
   const countBtn = document.getElementById('delete-count-btn');
-  libView.classList.toggle('delete-mode', deleteMode);
-  btn.classList.toggle('active', deleteMode);
-  countBtn.style.display = 'none';
-  // Re-render so spines get delete-mode click handlers
-  renderLibrary();
+  if(bsView) bsView.classList.toggle('delete-mode', deleteMode);
+  if(btn) btn.classList.toggle('active', deleteMode);
+  if(countBtn) countBtn.style.display = 'none';
+  renderBookshelf();
 }
 
 function toggleBookSelect(id){
@@ -2655,6 +2746,7 @@ async function executeDeleteSelected(){
   document.getElementById('delete-mode-btn').classList.remove('active');
   document.getElementById('delete-count-btn').style.display='none';
   renderLibrary();
+  renderBookshelf();
   toast('Books deleted');
 }
 
