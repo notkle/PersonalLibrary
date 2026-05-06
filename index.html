@@ -1487,6 +1487,7 @@ function showReaderView() {
 }
 function goToLibrary() {
   stopSpeech();
+  pauseYouTube();
   sessionStorage.removeItem('pl_open_book');
   renderLibrary();
   showLibraryView();
