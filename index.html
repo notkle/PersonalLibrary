@@ -27,8 +27,6 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 .btn-primary:hover { background:var(--amber-light); }
 .btn-ghost { background:transparent; border-color:rgba(200,144,42,0.3); color:var(--amber-light); }
 .btn-ghost:hover { border-color:var(--amber); background:rgba(200,144,42,0.08); }
-.btn-danger { background:transparent; border-color:rgba(200,80,80,0.35); color:#ff9090; font-size:0.85rem; padding:6px 13px; }
-.btn-danger:hover { background:rgba(200,60,60,0.1); border-color:#ff7070; }
 
 /* VIEWS */
 .view { display:none; position:fixed; inset:0; top:56px; }
@@ -51,9 +49,7 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 .btn-delete-mode:hover,.btn-delete-mode.active { background:rgba(200,60,60,0.1); border-color:#ff7070; }
 .btn-delete-count { background:#8b2020; border:1.5px solid #6b1010; color:#ffd0d0; font-family:"Crimson Pro",serif; font-size:0.88rem; padding:6px 14px; border-radius:3px; cursor:pointer; transition:all 0.18s; }
 .btn-delete-count:hover { background:#a02828; }
-.lib-heading { font-family:'Playfair Display',serif; font-size:1.9rem; color:var(--paper); font-weight:400; margin-bottom:4px; }
-.lib-heading em { color:var(--amber-light); font-style:italic; }
-.lib-sub { font-size:0.88rem; color:var(--paper-dark); font-style:italic; margin-bottom:32px; }
+.lib-sub { font-size:0.88rem; color:var(--paper-dark); font-style:italic; }
 
 /* SHELF */
 .shelf-wrap { background:linear-gradient(180deg,#1e1005,#2e1a08,#3d2010); border-radius:5px; padding:20px 24px 0; border:1px solid rgba(107,68,35,0.5); box-shadow:inset 0 -4px 16px rgba(0,0,0,0.4),0 6px 28px rgba(0,0,0,0.5); margin-bottom:32px; }
@@ -1350,7 +1346,7 @@ function restoreVolPrefs() {
   const lastId = localStorage.getItem('pl_ambient_id');
   if (lastId) {
     currentAmbientId = lastId;
-    setTimeout(()=>{ renderAmbientPopup(); renderRspAmbientList(); }, 500);
+    setTimeout(()=>{ renderAmbientPopup(); }, 500);
   }
 }
 
@@ -1745,7 +1741,7 @@ function buildSentenceCache(){
 // ═══════════════════════════════════════════
 // LOAD CHAPTER
 // ═══════════════════════════════════════════
-let _sentenceBlockMap = [];
+
 
 function loadChapter(ci,si=0){
   stopSpeech(); chIdx=ci; sIdx=si;
@@ -1757,6 +1753,12 @@ function loadChapter(ci,si=0){
   const content=document.getElementById('reader-content');
   content.innerHTML=ch.html||ch.text;
   content.querySelectorAll('script,style').forEach(e=>e.remove());
+  // Remove hyperlinks and footnote superscripts from display
+  content.querySelectorAll('a').forEach(a=>{
+    // Replace link with its text content only
+    a.replaceWith(document.createTextNode(a.textContent||''));
+  });
+  content.querySelectorAll('sup,sub').forEach(e=>e.remove());
   _originalChapterHTML = content.innerHTML;
   _lastHighlightedIdx = -1;
 
@@ -1766,55 +1768,13 @@ function loadChapter(ci,si=0){
 
 function splitSentences(text){
   if(!text) return [];
-  // Normalize + strip footnote references like [1], (2), superscript numbers
-  let t = text
+  const t = text
     .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ')
-    .replace(/\[\d+\]/g,'').replace(/\(\d+\)/g,'')   // strip [1] (2)
-    .replace(/\u00b9|\u00b2|\u00b3|[\u2070-\u2079]/g,'') // strip unicode superscripts
     .replace(/\s+/g,' ').trim();
   if(!t) return [];
-
-  // Simple split: find . ! ? that end a sentence
-  // Rule: split if followed by space+uppercase OR end of string
-  // Treat content inside quotes as a single unit — find closing quote
-  const sentences = [];
-  let start = 0;
-  let i = 0;
-
-  while(i < t.length){
-    const ch = t[i];
-
-    // If we hit an opening quote, skip to closing quote before checking punctuation
-    if(ch === '"' || ch === '\u201c'){
-      i++;
-      while(i < t.length && t[i] !== '"' && t[i] !== '\u201d') i++;
-      i++; // skip closing quote
-      continue;
-    }
-
-    if(ch === '.' || ch === '!' || ch === '?'){
-      // Consume multiple punctuation chars
-      while(i+1 < t.length && '.!?'.includes(t[i+1])) i++;
-      // Consume closing quotes/parens after punctuation
-      while(i+1 < t.length && (t[i+1]==='"'||t[i+1]==="'"||t[i+1]==='\u201d'||t[i+1]==='\u2019'||t[i+1]===')')) i++;
-
-      const next = t[i+1];
-      const nextNext = t[i+2];
-      // Split if: end of string, or space followed by uppercase letter/quote
-      if(!next || (next===' ' && nextNext && /[A-Z\u201c"]/.test(nextNext))){
-        const s = t.slice(start, i+1).trim();
-        if(s.length > 2) sentences.push(s);
-        start = i+2;
-        while(start < t.length && t[start]===' ') start++;
-        i = start;
-        continue;
-      }
-    }
-    i++;
-  }
-  const last = t.slice(start).trim();
-  if(last.length > 2) sentences.push(last);
-  return sentences.length ? sentences : [t];
+  // Simply split on . ! ? — keep delimiter, ignore quotes entirely
+  const raw = t.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [t];
+  return raw.map(s=>s.trim()).filter(s=>s.length>2);
 }
 
 function attachClickToJump(){
@@ -1901,35 +1861,18 @@ let _lastHighlightedIdx = -1;
 function highlightReading(){
   const content = document.getElementById('reader-content');
   if(!content) return;
-
-  // Restore clean HTML then inject highlight span around current sentence
   if(_originalChapterHTML) content.innerHTML = _originalChapterHTML;
-
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
-
-  // Strip leading quotes/footnote markers, take first 5 real words as probe
-  const stripped = sentence.replace(/^[\u201c"'\u2018\[\(\s]+/, '').trim();
-  const words = stripped.split(/\s+/).filter(w => /[a-zA-Z]/.test(w)).slice(0, 5);
+  // Get first 4 plain alpha words as search probe
+  const words = sentence.replace(/[^a-zA-Z\s]/g,' ').trim().split(/\s+/).filter(w=>w.length>1).slice(0,4);
   if(!words.length) return;
-  const probe = words.join(' ');
-  const esc = probe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  // Allow a few chars between words to handle inline elements like <em>
-  const pattern = esc.split('\\ ').join('[\\s\\S]{0,15}');
-
+  const probe = words.join('\s+');
   try {
-    const re = new RegExp('(' + pattern + ')', 'i');
-    const newHTML = content.innerHTML.replace(re, '<span class="highlight-reading">$1</span>');
+    const re = new RegExp('(' + probe + '[^<]{0,200})', 'i');
+    const newHTML = content.innerHTML.replace(re,'<span class="highlight-reading">$1</span>');
     if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
-  } catch(e) {
-    // Fallback: plain first 3 words
-    try {
-      const fb = words.slice(0,3).join(' ').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-      const re2 = new RegExp('('+fb+'[^<]{0,120})', 'i');
-      const newHTML = content.innerHTML.replace(re2, '<span class="highlight-reading">$1</span>');
-      if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
-    } catch(e2){}
-  }
+  } catch(e){}
   _lastHighlightedIdx = sIdx;
 }
 
@@ -2120,8 +2063,18 @@ function loadVoices(){
       sel.value=best.name; selVoice=best;
       if(chromeDefault && !localStorage.getItem('pl_voice')){
         // Only set defaults if user hasn't customised
-        if(!localStorage.getItem('pl_rate'))  { rate=0.9;  updateSpeedLabel(); }
-        if(!localStorage.getItem('pl_pitch')) { pitch=0.9; updatePitchLabel(); }
+        if(!localStorage.getItem('pl_rate'))  {
+          rate=0.9;
+          localStorage.setItem('pl_rate','0.9');
+          updateSpeedLabel();
+        }
+        if(!localStorage.getItem('pl_pitch')) {
+          pitch=0.9;
+          localStorage.setItem('pl_pitch','0.9');
+          updatePitchLabel();
+        }
+        // Save the voice default too
+        localStorage.setItem('pl_voice','Google UK English Female');
       }
     }
   }
@@ -2184,12 +2137,7 @@ function updateBookmarkBtn(){
 // ═══════════════════════════════════════════
 // REMOVE CURRENT BOOK
 // ═══════════════════════════════════════════
-function confirmRemoveCurrentBook(){
-  if(!book) return;
-  pendingDeleteId=book.id;
-  document.getElementById('modal-remove-msg').textContent=`Remove "${book.title}" from your library? This cannot be undone.`;
-  openModal('modal-remove-book');
-}
+// confirmRemoveCurrentBook removed — delete via library delete mode
 async function confirmDeleteBook(){
   closeModal('modal-remove-book');
   if(!pendingDeleteId) return;
@@ -2426,9 +2374,9 @@ function syncVolSliders() {
   });
 }
 
-/* renderRspAmbientList removed */
 
-/* rspAddAmbient removed */
+
+
 
 function restoreAppearancePrefs() {
   const fs = localStorage.getItem('pl_fontsize')   || '18';
