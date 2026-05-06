@@ -1375,9 +1375,6 @@ async function parseEpub(file) {
     const doc=parser.parseFromString(html,'text/html');
     doc.querySelectorAll('script,style,nav').forEach(e=>e.remove());
 
-    const text=(doc.body?.textContent||'').trim();
-    if(text.length<60) continue;
-
     // Title priority: NCX/NAV > first valid heading > Chapter N
     let chTitle=titleMap[chapterFile]||titleMap[decodeURIComponent(chapterFile)]||null;
     if(!chTitle){
@@ -1415,6 +1412,17 @@ async function parseEpub(file) {
         img.removeAttribute('width');img.removeAttribute('height');
       }catch(e){img.remove();}
     }
+
+    // Extract clean text AFTER image processing
+    // Replace img tags with a space so surrounding words don't merge
+    const textClone=doc.body?.cloneNode(true);
+    if(textClone){
+      textClone.querySelectorAll('img').forEach(img=>{
+        img.replaceWith(document.createTextNode(' '));
+      });
+    }
+    const text=(textClone?.textContent||doc.body?.textContent||'').trim();
+    if(text.length<60) continue;
 
     chapters.push({title:chTitle,html:doc.body?.innerHTML||text,text});
   }
@@ -1519,8 +1527,45 @@ function loadChapter(ci,si=0){
 }
 
 function splitSentences(text){
-  const raw=text.match(/[^.!?…]+(?:[.!?…]+(?:\s|$))|[^.!?…]+$/g)||[text];
-  return raw.map(s=>s.trim()).filter(s=>s.length>3);
+  // Normalize whitespace and html entities
+  let t = text
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ')
+    .replace(/\s+/g,' ').trim();
+
+  const sentences = [];
+  // State machine sentence splitter — handles abbreviations, quotes, ellipsis
+  const abbrevs = /\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec|approx|est|vol|no|pp|ed|trans|dept|govt|inc|corp|ltd|co)$/i;
+  let start = 0;
+  let i = 0;
+  while(i < t.length){
+    const ch = t[i];
+    if(ch === '.' || ch === '!' || ch === '?' || ch === '…'){
+      // Look ahead past quotes and spaces
+      let end = i;
+      while(end+1 < t.length && (t[end+1] === '"' || t[end+1] === "'" || t[end+1] === '”' || t[end+1] === '’' || t[end+1] === ')')) end++;
+      const nextChar = t[end+1];
+      const prevWord = t.slice(0,i).match(/\S+$/)?.[0]||'';
+      // Don't split on abbreviations or decimal numbers
+      if(ch==='.' && (abbrevs.test(prevWord) || /^\d+$/.test(prevWord))) { i++; continue; }
+      // Don't split unless followed by space+capital or end of string
+      if(nextChar && nextChar !== ' ' && nextChar !== '\n') { i++; continue; }
+      const afterSpace = t[end+2];
+      if(nextChar===' ' && afterSpace && afterSpace===afterSpace.toLowerCase() && !/[0-9"'“‘(]/.test(afterSpace)) { i++; continue; }
+      const sentence = t.slice(start, end+1).trim();
+      if(sentence.length > 3) sentences.push(sentence);
+      start = end+1;
+      i = end+1;
+      // Skip whitespace
+      while(i < t.length && t[i]===' ') i++;
+      start = i;
+      continue;
+    }
+    i++;
+  }
+  // Remainder
+  const last = t.slice(start).trim();
+  if(last.length > 3) sentences.push(last);
+  return sentences.length ? sentences : [t];
 }
 
 function attachClickToJump(){
@@ -1596,20 +1641,62 @@ function clearHighlight(cls){
     const p=el.parentNode; p.replaceChild(document.createTextNode(el.textContent),el); p.normalize();
   });
 }
+function normalizeWS(s){ return s.replace(/[\s\u00a0]+/g,' ').trim(); }
+
 function highlightText(text,cls){
   if(!text) return null;
   const content=document.getElementById('reader-content');
-  const clean=text.replace(/\s+/g,' ').trim();
+  const clean=normalizeWS(text);
+  if(!clean) return null;
+
+  // Strategy 1: exact match in a single text node (normalized)
   const walker=document.createTreeWalker(content,NodeFilter.SHOW_TEXT);
   let node;
   while(node=walker.nextNode()){
-    const idx=node.nodeValue.indexOf(clean);
+    const nodeNorm=normalizeWS(node.nodeValue);
+    const idx=nodeNorm.indexOf(clean);
     if(idx!==-1){
-      const span=document.createElement('span'); span.className=cls; span.textContent=node.nodeValue.slice(idx,idx+clean.length);
+      // Map normalized index back to raw index
+      let rawIdx=0, normCount=0;
+      const raw=node.nodeValue;
+      while(rawIdx<raw.length && normCount<idx){
+        if(/[\s\u00a0]/.test(raw[rawIdx])){
+          while(rawIdx<raw.length && /[\s\u00a0]/.test(raw[rawIdx])) rawIdx++;
+          normCount++;
+        } else { rawIdx++; normCount++; }
+      }
+      // Find end
+      let rawEnd=rawIdx, normEnd=normCount;
+      while(rawEnd<raw.length && normEnd<idx+clean.length){
+        if(/[\s\u00a0]/.test(raw[rawEnd])){
+          while(rawEnd<raw.length && /[\s\u00a0]/.test(raw[rawEnd])) rawEnd++;
+          normEnd++;
+        } else { rawEnd++; normEnd++; }
+      }
+      const span=document.createElement('span'); span.className=cls;
+      span.textContent=raw.slice(rawIdx,rawEnd);
+      const p=node.parentNode;
+      if(rawIdx>0) p.insertBefore(document.createTextNode(raw.slice(0,rawIdx)),node);
+      p.insertBefore(span,node);
+      if(rawEnd<raw.length) p.insertBefore(document.createTextNode(raw.slice(rawEnd)),node);
+      p.removeChild(node); return span;
+    }
+  }
+
+  // Strategy 2: sentence spans multiple nodes — find first ~6 words in any text node
+  const words=clean.split(' ').slice(0,6).join(' ');
+  if(words.length<8) return null;
+  const walker2=document.createTreeWalker(content,NodeFilter.SHOW_TEXT);
+  while(node=walker2.nextNode()){
+    const nodeNorm=normalizeWS(node.nodeValue);
+    if(nodeNorm.includes(words)){
+      const idx=nodeNorm.indexOf(words);
+      const span=document.createElement('span'); span.className=cls;
+      span.textContent=node.nodeValue.slice(idx, idx+words.length);
       const p=node.parentNode;
       if(idx>0) p.insertBefore(document.createTextNode(node.nodeValue.slice(0,idx)),node);
       p.insertBefore(span,node);
-      if(idx+clean.length<node.nodeValue.length) p.insertBefore(document.createTextNode(node.nodeValue.slice(idx+clean.length)),node);
+      if(idx+words.length<node.nodeValue.length) p.insertBefore(document.createTextNode(node.nodeValue.slice(idx+words.length)),node);
       p.removeChild(node); return span;
     }
   }
