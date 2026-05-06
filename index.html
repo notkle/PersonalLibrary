@@ -2039,8 +2039,7 @@ function attachClickToJump(){
     let bestScore = -1;
     for(let i = 0; i < sentenceTexts.length; i++){
       const st = sentenceTexts[i] || '';
-      if(st.includes(snippet) || snippet.split(' ').filter(w=>w.length>3).some(w=>st.includes(w))){
-        // prefer closest to current position
+      if(snippet.length > 4 && st.includes(snippet)){
         const score = 1000 - Math.abs(i - sIdx);
         if(score > bestScore){ bestScore = score; bestIdx = i; }
       }
