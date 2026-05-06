@@ -658,17 +658,82 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
 <!-- SETTINGS -->
 <div id="settings-view" class="view">
   <h1 class="settings-heading">⚙ <em>Settings</em></h1>
-  <div class="settings-sub">Customize your PersonalLibrary experience</div>
+  <div class="settings-sub">All settings are saved automatically and persist across sessions</div>
 
+  <!-- APPEARANCE -->
+  <div class="settings-section">
+    <div class="settings-section-title">Appearance</div>
+    <div class="vol-row">
+      <span class="vol-label">Font Size</span>
+      <input type="range" class="vol-slider" id="rsp-fontsize" min="12" max="26" value="18" oninput="setFontSize(this.value)">
+      <span class="vol-value" id="rsp-fontsize-val">18px</span>
+    </div>
+    <div class="vol-row" style="margin-top:12px">
+      <span class="vol-label">Line Height</span>
+      <div style="display:flex;gap:8px;flex:1">
+        <button class="rsp-tog-btn" onclick="setLineHeight('1.5',this)">Tight</button>
+        <button class="rsp-tog-btn active" onclick="setLineHeight('1.9',this)">Normal</button>
+        <button class="rsp-tog-btn" onclick="setLineHeight('2.4',this)">Loose</button>
+      </div>
+    </div>
+    <div class="vol-row" style="margin-top:12px">
+      <span class="vol-label">Theme</span>
+      <div style="display:flex;gap:8px;flex:1">
+        <button class="theme-btn theme-dark active" onclick="setTheme('dark',this)">Dark</button>
+        <button class="theme-btn theme-sepia" onclick="setTheme('sepia',this)">Sepia</button>
+        <button class="theme-btn theme-light" onclick="setTheme('light',this)">Light</button>
+      </div>
+    </div>
+    <div class="vol-row" style="margin-top:12px">
+      <span class="vol-label">☀ Brightness</span>
+      <button class="dock-speed-btn" onclick="changeBrightness(-5)">−</button>
+      <input type="range" class="vol-slider" id="bright-slider" min="0" max="90" value="0" oninput="setBrightness(this.value)" style="margin:0 8px">
+      <button class="dock-speed-btn" onclick="changeBrightness(5)">+</button>
+      <span class="vol-value" id="bright-val">0%</span>
+    </div>
+  </div>
+
+  <!-- VOICE -->
+  <div class="settings-section">
+    <div class="settings-section-title">Voice</div>
+    <div class="vol-row">
+      <span class="vol-label">Voice</span>
+      <select class="voice-select" id="voice-select" onchange="voiceChanged()" style="flex:1;max-width:none;background:#2a1e0e;border:1px solid rgba(200,144,42,0.22);color:var(--paper);font-family:Crimson Pro,serif;font-size:0.9rem;padding:5px 8px;border-radius:3px"></select>
+    </div>
+    <div class="vol-row" style="margin-top:12px">
+      <span class="vol-label">Speed</span>
+      <button class="dock-speed-btn" onclick="changeSpeed(-1)">−</button>
+      <span id="speed-lbl" style="min-width:40px;text-align:center;color:var(--amber-light);font-size:0.9rem">1×</span>
+      <button class="dock-speed-btn" onclick="changeSpeed(1)">+</button>
+    </div>
+    <div class="vol-row">
+      <span class="vol-label">Pitch</span>
+      <button class="dock-speed-btn" onclick="changePitch(-1)">−</button>
+      <span id="pitch-lbl" style="min-width:40px;text-align:center;color:var(--amber-light);font-size:0.9rem">1.0</span>
+      <button class="dock-speed-btn" onclick="changePitch(1)">+</button>
+    </div>
+    <div class="vol-row" style="margin-top:12px">
+      <span class="vol-label">🔊 Voice Vol</span>
+      <input type="range" class="vol-slider" id="voice-vol" min="0" max="100" value="100" oninput="setVoiceVolume(this.value)">
+      <span class="vol-value" id="voice-vol-val">100%</span>
+    </div>
+  </div>
+
+  <!-- AMBIENT -->
   <div class="settings-section">
     <div class="settings-section-title">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#e8b84b" stroke-width="1.4"><path d="M2 3h12M2 8h12M2 13h7"/><circle cx="12" cy="13" r="2.5"/><line x1="12" y1="10.5" x2="12" y2="8"/></svg>
-      Ambient Sounds
+      Ambient Sound
+    </div>
+    <div class="vol-row" style="margin-bottom:14px">
+      <span class="vol-label">🎵 Ambient Vol</span>
+      <input type="range" class="vol-slider" id="ambient-vol" min="0" max="100" value="40" oninput="setAmbientVolume(this.value)">
+      <span class="vol-value" id="ambient-vol-val">40%</span>
     </div>
     <div class="ambient-list" id="ambient-list">
       <div style="font-size:0.85rem;color:rgba(200,144,42,0.35);font-style:italic">No sounds added yet</div>
     </div>
-    <div class="add-ambient-form">
+    <div class="add-ambient-form" style="margin-top:12px">
       <div class="form-row">
         <div class="form-field" style="flex:0.8">
           <label class="form-label">Name</label>
@@ -682,19 +747,8 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
       </div>
     </div>
     <div class="settings-note">
-      Paste any YouTube URL. The video plays silently in the background on loop while you read.<br>
-      Note: some YouTube videos disable embedding — if a sound won't play, try a different video.
-    </div>
-
-    <div class="vol-row" style="margin-top:20px">
-      <span class="vol-label">🔊 Voice vol</span>
-      <input type="range" class="vol-slider" id="voice-vol" min="0" max="100" value="100" oninput="setVoiceVolume(this.value)">
-      <span class="vol-value" id="voice-vol-val">100%</span>
-    </div>
-    <div class="vol-row">
-      <span class="vol-label">🎵 Ambient vol</span>
-      <input type="range" class="vol-slider" id="ambient-vol" min="0" max="100" value="40" oninput="setAmbientVolume(this.value)">
-      <span class="vol-value" id="ambient-vol-val">40%</span>
+      Paste any YouTube URL. Plays silently on loop while you read.<br>
+      Note: some videos disable embedding — try a different video if one won't play.
     </div>
   </div>
 </div>
@@ -704,7 +758,6 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
   <div class="reader-topbar">
     <div class="reader-book-title" id="reader-title"></div>
     <select class="chapter-select" id="chapter-select"></select>
-    <button class="topbar-settings-btn" id="topbar-settings-btn" onclick="toggleReaderSettings()" title="Settings">⚙</button>
   </div>
   <div class="reader-body">
     <div class="page-wrap" id="page-wrap">
@@ -735,104 +788,7 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
 </div>
 
 
-<!-- FLOATING READER SETTINGS PANEL -->
-<div class="reader-settings-overlay" id="reader-settings-overlay">
-  <div class="reader-settings-backdrop" onclick="closeReaderSettings()"></div>
-  <div class="reader-settings-panel">
-    <div class="rsp-header">
-      <span class="rsp-title">⚙ Reader Settings</span>
-      <button class="rsp-close" onclick="closeReaderSettings()">✕</button>
-    </div>
-    <div class="rsp-body">
-
-      <!-- APPEARANCE -->
-      <div class="rsp-section">
-        <div class="rsp-section-title">Appearance</div>
-        <div class="rsp-row">
-          <span class="rsp-label">Font size</span>
-          <input type="range" class="rsp-slider" id="rsp-fontsize" min="12" max="26" value="18" oninput="setFontSize(this.value)">
-          <span class="rsp-val" id="rsp-fontsize-val">18px</span>
-        </div>
-        <div class="rsp-row">
-          <span class="rsp-label">Line height</span>
-          <div class="rsp-btn-row" style="flex:1">
-            <button class="rsp-tog-btn" onclick="setLineHeight('1.5',this)">Tight</button>
-            <button class="rsp-tog-btn active" onclick="setLineHeight('1.9',this)">Normal</button>
-            <button class="rsp-tog-btn" onclick="setLineHeight('2.4',this)">Loose</button>
-          </div>
-        </div>
-        <div class="rsp-row" style="margin-top:4px">
-          <span class="rsp-label">Theme</span>
-          <div class="theme-btns" style="flex:1">
-            <button class="theme-btn theme-dark active" onclick="setTheme('dark',this)">Dark</button>
-            <button class="theme-btn theme-sepia" onclick="setTheme('sepia',this)">Sepia</button>
-            <button class="theme-btn theme-light" onclick="setTheme('light',this)">Light</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- VOLUME -->
-      <div class="rsp-section">
-        <div class="rsp-section-title">Volume</div>
-        <div class="rsp-row">
-          <span class="rsp-label">🔊 Voice</span>
-          <input type="range" class="rsp-slider" id="rsp-voice-vol" min="0" max="100" value="100" oninput="setVoiceVolume(this.value); syncVolSliders()">
-          <span class="rsp-val" id="rsp-voice-vol-val">100%</span>
-        </div>
-        <div class="rsp-row">
-          <span class="rsp-label">🎵 Ambient</span>
-          <input type="range" class="rsp-slider" id="rsp-ambient-vol" min="0" max="100" value="40" oninput="setAmbientVolume(this.value); syncVolSliders()">
-          <span class="rsp-val" id="rsp-ambient-vol-val">40%</span>
-        </div>
-      </div>
-
-      <!-- VOICE -->
-      <div class="rsp-section">
-        <div class="rsp-section-title">Voice</div>
-        <div class="rsp-row">
-          <span class="rsp-label">Voice</span>
-          <select class="voice-select" id="voice-select" onchange="voiceChanged()" style="flex:1;max-width:none"></select>
-        </div>
-        <div class="rsp-row" style="margin-top:10px">
-          <span class="rsp-label">Speed</span>
-          <button class="dock-speed-btn" onclick="changeSpeed(-1)">−</button>
-          <span class="speed-label" id="speed-lbl" style="min-width:36px;text-align:center;color:var(--amber-light);font-size:0.88rem">1×</span>
-          <button class="dock-speed-btn" onclick="changeSpeed(1)">+</button>
-        </div>
-        <div class="rsp-row">
-          <span class="rsp-label">Pitch</span>
-          <button class="dock-speed-btn" onclick="changePitch(-1)">−</button>
-          <span class="pitch-label" id="pitch-lbl" style="min-width:36px;text-align:center;color:var(--amber-light);font-size:0.88rem">1.0</span>
-          <button class="dock-speed-btn" onclick="changePitch(1)">+</button>
-        </div>
-      </div>
-
-      <!-- BRIGHTNESS -->
-      <div class="rsp-section">
-        <div class="rsp-section-title">Brightness</div>
-        <div class="rsp-row">
-          <span class="rsp-label">☀ Dim</span>
-          <button class="dock-speed-btn" onclick="changeBrightness(-10)">−</button>
-          <input type="range" class="rsp-slider" id="bright-slider" min="0" max="90" value="0" oninput="setBrightness(this.value)" style="margin:0 6px">
-          <button class="dock-speed-btn" onclick="changeBrightness(10)">+</button>
-          <span class="rsp-val" id="bright-val" style="min-width:34px">0%</span>
-        </div>
-      </div>
-
-      <!-- AMBIENT SOUNDS -->
-      <div class="rsp-section">
-        <div class="rsp-section-title">Ambient Sound</div>
-        <div class="rsp-ambient-list" id="rsp-ambient-list"></div>
-        <div class="rsp-add-form">
-          <input type="text" class="rsp-input" id="rsp-ambient-name" placeholder="Name (e.g. Rainy Café)">
-          <input type="text" class="rsp-input" id="rsp-ambient-url" placeholder="YouTube URL">
-          <button class="rsp-add-btn" onclick="rspAddAmbient()">+ Add Sound</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
+<!-- floating settings panel removed -->
 
 <div class="brightness-overlay" id="brightness-overlay"></div>
 
@@ -873,6 +829,16 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
   </div>
 
   <div class="dock-divider"></div>
+
+  <button class="dock-icon-btn" id="ambient-dock-btn" onclick="toggleAmbientPopup()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 4.5h2l1.5-3L7 10l2-4.5 1 2.5h2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Ambient
+  </button>
+
+  <button class="dock-icon-btn" id="ambient-dock-btn" onclick="toggleAmbientPopup()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 4.5h2l1.5-3L7 10l2-4.5 1 2.5h2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Ambient
+  </button>
 
   <button class="dock-icon-btn" id="zzz-btn" onclick="handleZzz()" title="Save sleep position">ZZZ</button>
 
@@ -1287,7 +1253,7 @@ function showSettingsView() {
   document.getElementById('back-btn').style.display='block';
   document.getElementById('remove-book-btn').style.display='none';
   document.getElementById('add-btn').style.display='none';
-  document.getElementById('settings-btn').style.display='none';
+  const sb=document.getElementById('settings-btn'); if(sb) sb.style.display='none';
   document.body.classList.add('in-library');
 }
 function showReaderView() {
@@ -1296,7 +1262,7 @@ function showReaderView() {
   document.getElementById('back-btn').style.display='block';
   document.getElementById('remove-book-btn').style.display='block';
   document.getElementById('add-btn').style.display='none';
-  document.getElementById('settings-btn').style.display='none';
+  const sb=document.getElementById('settings-btn'); if(sb) sb.style.display='none';
   document.body.classList.remove('in-library');
 }
 function goToLibrary() {
@@ -1416,24 +1382,19 @@ async function parseEpub(file) {
       }catch(e){img.remove();}
     }
 
-    // Extract clean TTS text — strip headings (already stored as chTitle),
-    // images, and nav elements so they don't get read aloud
+    // Extract clean TTS text — strip headings, images, nav
     const textClone=doc.body?.cloneNode(true);
     if(textClone){
-      // Remove headings (they are the chapter title, not body text)
       textClone.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h=>h.remove());
-      // Remove images (replace with space so words don't merge)
       textClone.querySelectorAll('img').forEach(img=>img.replaceWith(document.createTextNode(' ')));
-      // Remove nav, aside, figure captions
       textClone.querySelectorAll('nav,aside,figcaption').forEach(e=>e.remove());
     }
     const text=(textClone?.textContent||'').replace(/\s+/g,' ').trim();
     if(text.length<30) continue;
 
-    // Strip headings from rendered HTML too so it matches TTS text exactly
-    doc.body?.querySelectorAll('h1,h2,h3,h4,h5,h6,nav,aside,figcaption').forEach(e=>e.remove());
-    const cleanHtml = doc.body?.innerHTML || text;
-    chapters.push({title:chTitle, html:cleanHtml, text});
+    // Keep headings in rendered HTML (visible to reader)
+    // But TTS text already has them stripped via textClone above
+    chapters.push({title:chTitle, html:doc.body?.innerHTML||text, text});
   }
   return {title,author,chapters};
 }
@@ -1571,6 +1532,10 @@ function loadChapter(ci,si=0){
   const content=document.getElementById('reader-content');
   content.innerHTML=ch.html||ch.text;
   content.querySelectorAll('script,style').forEach(e=>e.remove());
+  // Style headings to look good but exclude from highlight matching base
+  content.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h=>{
+    h.setAttribute('data-heading','1');
+  });
   _originalChapterHTML = content.innerHTML;
   _lastHighlightedIdx = -1;
   updateScrollbar(); updateProgress(); highlightReading(); scrollToReading();
@@ -1702,31 +1667,55 @@ let _lastHighlightedIdx = -1;
 function highlightReading(){
   const content = document.getElementById('reader-content');
   if(!content) return;
-  const sentence = sentences[sIdx];
-
-  // Restore clean HTML before applying new highlight
   if(_originalChapterHTML) content.innerHTML = _originalChapterHTML;
+
+  const sentence = sentences[sIdx];
   if(!sentence) return;
-
   const clean = normalizeWS(sentence);
-  if(!clean || clean.length < 3) return;
-
-  const words = clean.split(' ').filter(w => w.length > 0);
+  if(!clean || clean.length < 2) return;
+  const words = clean.split(' ').filter(w=>w.length>0);
   if(!words.length) return;
 
-  // Try progressively shorter matches so sentences near images still get highlighted
-  const attempts = [words, words.slice(0,8), words.slice(0,5), words.slice(0,3)];
-  for(const wds of attempts){
-    if(!wds.length) continue;
-    const pattern = wds.map(w => escRe(w)).join('[\s\S]{0,80}');
-    try{
-      const re = new RegExp('(' + pattern + ')', 'i');
-      const newHTML = content.innerHTML.replace(re, '<span class="highlight-reading">$1</span>');
-      if(newHTML !== content.innerHTML){
-        content.innerHTML = newHTML;
-        break;
+  // Try progressively fewer words until we find a match in a text node
+  const counts = [...new Set([words.length, 8, 5, 3, 1])].filter(n=>n<=words.length);
+  for(const n of counts){
+    const target = words.slice(0,n).join(' ');
+    if(target.length < 2) continue;
+    // Walk text nodes, skip those inside headings
+    const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+    let node;
+    while(node = walker.nextNode()){
+      // Skip text inside heading elements
+      let p = node.parentNode;
+      let inHeading = false;
+      while(p && p !== content){ if(/^H[1-6]$/.test(p.nodeName)){inHeading=true;break;} p=p.parentNode; }
+      if(inHeading) continue;
+      const norm = normalizeWS(node.nodeValue);
+      const idx = norm.toLowerCase().indexOf(target.toLowerCase());
+      if(idx === -1) continue;
+      // Found — split this text node and wrap match in span
+      const raw = node.nodeValue;
+      // Find raw index corresponding to normalized idx
+      let ri=0, ni=0;
+      while(ri<raw.length && ni<idx){
+        if(/\s/.test(raw[ri])){ while(ri<raw.length&&/\s/.test(raw[ri]))ri++; ni++; }
+        else{ ri++; ni++; }
       }
-    } catch(e){ continue; }
+      let re2=ri, ne=ni;
+      while(re2<raw.length && ne<idx+target.length){
+        if(/\s/.test(raw[re2])){ while(re2<raw.length&&/\s/.test(raw[re2]))re2++; ne++; }
+        else{ re2++; ne++; }
+      }
+      const span = document.createElement('span');
+      span.className = 'highlight-reading';
+      span.textContent = raw.slice(ri, re2);
+      const par = node.parentNode;
+      if(ri>0) par.insertBefore(document.createTextNode(raw.slice(0,ri)), node);
+      par.insertBefore(span, node);
+      if(re2<raw.length) par.insertBefore(document.createTextNode(raw.slice(re2)), node);
+      par.removeChild(node);
+      return;
+    }
   }
   _lastHighlightedIdx = sIdx;
 }
@@ -2038,21 +2027,13 @@ const THEMES = {
   light: { bg:'#f8f6f2', text:'#1a1208', contentBg:'#f8f6f2' },
 };
 
-function toggleReaderSettings() {
-  const overlay = document.getElementById('reader-settings-overlay');
-  const btn = document.getElementById('topbar-settings-btn');
-  const show = overlay.classList.toggle('show');
-  btn.classList.toggle('active', show);
-  if (show) renderRspAmbientList();
-}
-function closeReaderSettings() {
-  document.getElementById('reader-settings-overlay').classList.remove('show');
-  document.getElementById('topbar-settings-btn').classList.remove('active');
-}
+function toggleReaderSettings(){} function closeReaderSettings(){}
 
 function setFontSize(val) {
-  document.getElementById('reader-content').style.fontSize = val + 'px';
-  document.getElementById('rsp-fontsize-val').textContent = val + 'px';
+  const rc = document.getElementById('reader-content');
+  if(rc) rc.style.fontSize = val + 'px';
+  const fv = document.getElementById('rsp-fontsize-val');
+  if(fv) fv.textContent = val + 'px';
   localStorage.setItem('pl_fontsize', val);
 }
 
@@ -2076,80 +2057,36 @@ function setTheme(name, btn) {
 }
 
 function syncVolSliders() {
-  // Keep settings-page sliders and rsp sliders in sync
   const vv = Math.round(voiceVol * 100);
   const av = Math.round(ambientVol * 100);
-  const rspVV = document.getElementById('rsp-voice-vol');
-  const rspAV = document.getElementById('rsp-ambient-vol');
-  if (rspVV) { rspVV.value = vv; document.getElementById('rsp-voice-vol-val').textContent = vv + '%'; }
-  if (rspAV) { rspAV.value = av; document.getElementById('rsp-ambient-vol-val').textContent = av + '%'; }
-  const pgVV = document.getElementById('voice-vol');
-  const pgAV = document.getElementById('ambient-vol');
-  if (pgVV) { pgVV.value = vv; document.getElementById('voice-vol-val').textContent = vv + '%'; }
-  if (pgAV) { pgAV.value = av; document.getElementById('ambient-vol-val').textContent = av + '%'; }
+  const vvEl = document.getElementById('voice-vol');
+  const avEl = document.getElementById('ambient-vol');
+  if (vvEl) { vvEl.value = vv; }
+  const vvVal = document.getElementById('voice-vol-val');
+  if (vvVal) vvVal.textContent = vv + '%';
+  if (avEl) { avEl.value = av; }
+  const avVal = document.getElementById('ambient-vol-val');
+  if (avVal) avVal.textContent = av + '%';
 }
 
-function renderRspAmbientList() {
-  const el = document.getElementById('rsp-ambient-list');
-  if (!el) return;
-  el.innerHTML = '';
-  // Off
-  const off = document.createElement('div');
-  off.className = 'rsp-ambient-opt' + (currentAmbientId === null ? ' active' : '');
-  off.innerHTML = '<span style="font-size:1rem">🔇</span><span class="rsp-ambient-name">Off</span>';
-  off.onclick = () => { selectAmbient(null); renderRspAmbientList(); };
-  el.appendChild(off);
+/* renderRspAmbientList removed */
 
-  ambientSounds.forEach(s => {
-    const row = document.createElement('div');
-    row.className = 'rsp-ambient-opt' + (currentAmbientId === s.id ? ' active' : '');
-    const delBtn = s.preset ? '' : `<button onclick="event.stopPropagation();removeAmbientSound('${s.id}');renderRspAmbientList();" style="background:none;border:none;color:rgba(200,80,80,0.5);cursor:pointer;font-size:0.85rem;padding:0 2px" title="Remove">✕</button>`;
-    row.innerHTML = `<span style="font-size:1rem">${s.icon||'♪'}</span><span class="rsp-ambient-name">${s.name}</span>${delBtn}`;
-    row.addEventListener('click', () => { selectAmbient(s.id); renderRspAmbientList(); });
-    el.appendChild(row);
-  });
-  if (!ambientSounds.length) {
-    const empty = document.createElement('div');
-    empty.style.cssText = 'font-size:0.82rem;color:rgba(200,144,42,0.3);font-style:italic;padding:6px 0';
-    empty.textContent = 'No sounds added yet';
-    el.appendChild(empty);
-  }
-}
-
-function rspAddAmbient() {
-  const name = document.getElementById('rsp-ambient-name').value.trim();
-  const url  = document.getElementById('rsp-ambient-url').value.trim();
-  if (!name) { toast('Please enter a name'); return; }
-  if (!url)  { toast('Please enter a YouTube URL'); return; }
-  const vid = extractVideoId(url);
-  if (!vid)  { toast('Could not find a video ID in that URL'); return; }
-  const sound = { id:'s_'+Date.now(), name, url, videoId:vid };
-  ambientSounds.push(sound);
-  saveAmbientSounds();
-  renderAmbientList();
-  renderAmbientPopup();
-  renderRspAmbientList();
-  document.getElementById('rsp-ambient-name').value = '';
-  document.getElementById('rsp-ambient-url').value  = '';
-  toast(`"${name}" added`);
-}
+/* rspAddAmbient removed */
 
 function restoreAppearancePrefs() {
-  const fs = localStorage.getItem('pl_fontsize')    || '18';
-  const lh = localStorage.getItem('pl_lineheight')  || '1.9';
-  const th = localStorage.getItem('pl_theme')       || 'dark';
-  document.getElementById('rsp-fontsize').value = fs;
-  document.getElementById('rsp-fontsize-val').textContent = fs + 'px';
-  if (document.getElementById('reader-content')) {
-    document.getElementById('reader-content').style.fontSize   = fs + 'px';
-    document.getElementById('reader-content').style.lineHeight = lh;
-  }
-  // Set active line height button
+  const fs = localStorage.getItem('pl_fontsize')   || '18';
+  const lh = localStorage.getItem('pl_lineheight') || '1.9';
+  const th = localStorage.getItem('pl_theme')      || 'dark';
+  const fsEl = document.getElementById('rsp-fontsize');
+  const fsVal = document.getElementById('rsp-fontsize-val');
+  if (fsEl)  fsEl.value = fs;
+  if (fsVal) fsVal.textContent = fs + 'px';
+  const rc = document.getElementById('reader-content');
+  if (rc) { rc.style.fontSize = fs + 'px'; rc.style.lineHeight = lh; }
   const lhMap = {'1.5':'Tight','1.9':'Normal','2.4':'Loose'};
   document.querySelectorAll('.rsp-tog-btn').forEach(b => {
     b.classList.toggle('active', b.textContent === (lhMap[lh]||'Normal'));
   });
-  // Set theme
   const thBtn = document.querySelector(`.theme-btn.theme-${th}`);
   if (thBtn) setTheme(th, thBtn);
 }
