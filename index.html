@@ -1853,7 +1853,7 @@ function loadChapter(ci,si=0){
   if(!ch) return;
   document.getElementById('chapter-select').value=ci;
   document.getElementById('prog-chapter').textContent=ch.title.slice(0,36);
-  sentences=sentenceCache[ci]||splitSentences(ch.text);
+  // sentences built from DOM after render — see below
   const content=document.getElementById('reader-content');
   content.innerHTML=ch.html||ch.text;
   content.querySelectorAll('script,style').forEach(e=>e.remove());
@@ -1884,6 +1884,10 @@ function loadChapter(ci,si=0){
     el.replaceWith(h);
   });
 
+  // Build sentences from actual DOM text so indexOf matches exactly
+  const domText = content.textContent || "";
+  sentences = splitSentences(domText);
+  sentenceCache[ci] = sentences;
   _originalChapterHTML = content.innerHTML;
   _lastHighlightedIdx = -1;
 
