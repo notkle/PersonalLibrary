@@ -758,6 +758,7 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
   <div class="reader-topbar">
     <div class="reader-book-title" id="reader-title"></div>
     <select class="chapter-select" id="chapter-select"></select>
+    <button class="topbar-settings-btn" id="topbar-settings-btn" onclick="toggleReaderSettings()" title="Settings">⚙</button>
   </div>
   <div class="reader-body">
     <div class="page-wrap" id="page-wrap">
@@ -788,7 +789,88 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
 </div>
 
 
-<!-- floating settings panel removed -->
+<!-- FLOATING READER SETTINGS PANEL -->
+<div class="reader-settings-overlay" id="reader-settings-overlay">
+  <div class="reader-settings-backdrop" onclick="closeReaderSettings()"></div>
+  <div class="reader-settings-panel">
+    <div class="rsp-header">
+      <span class="rsp-title">⚙ Reader Settings</span>
+      <button class="rsp-close" onclick="closeReaderSettings()">✕</button>
+    </div>
+    <div class="rsp-body">
+
+      <!-- APPEARANCE -->
+      <div class="rsp-section">
+        <div class="rsp-section-title">Appearance</div>
+        <div class="rsp-row">
+          <span class="rsp-label">Font size</span>
+          <input type="range" class="rsp-slider" id="p-fontsize" min="12" max="26" value="18" oninput="setFontSize(this.value)">
+          <span class="rsp-val" id="p-fontsize-val">18px</span>
+        </div>
+        <div class="rsp-row" style="margin-top:8px">
+          <span class="rsp-label">Line height</span>
+          <div class="rsp-btn-row" style="flex:1">
+            <button class="rsp-tog-btn p-lh-btn" onclick="setLineHeight('1.5',this)">Tight</button>
+            <button class="rsp-tog-btn p-lh-btn active" onclick="setLineHeight('1.9',this)">Normal</button>
+            <button class="rsp-tog-btn p-lh-btn" onclick="setLineHeight('2.4',this)">Loose</button>
+          </div>
+        </div>
+        <div class="rsp-row" style="margin-top:8px">
+          <span class="rsp-label">Theme</span>
+          <div class="theme-btns" style="flex:1">
+            <button class="theme-btn theme-dark p-theme-btn active" onclick="setTheme('dark',this)">Dark</button>
+            <button class="theme-btn theme-sepia p-theme-btn" onclick="setTheme('sepia',this)">Sepia</button>
+            <button class="theme-btn theme-light p-theme-btn" onclick="setTheme('light',this)">Light</button>
+          </div>
+        </div>
+        <div class="rsp-row" style="margin-top:8px">
+          <span class="rsp-label">☀ Brightness</span>
+          <button class="dock-speed-btn" onclick="changeBrightness(-5)">−</button>
+          <span id="p-bright-val" style="min-width:32px;text-align:center;color:var(--amber-light);font-size:0.82rem">0%</span>
+          <button class="dock-speed-btn" onclick="changeBrightness(5)">+</button>
+        </div>
+      </div>
+
+      <!-- VOICE -->
+      <div class="rsp-section">
+        <div class="rsp-section-title">Voice</div>
+        <div class="rsp-row">
+          <span class="rsp-label">Voice</span>
+          <select class="voice-select" id="p-voice-select" onchange="voiceChangedPanel(this.value)" style="flex:1;max-width:none"></select>
+        </div>
+        <div class="rsp-row" style="margin-top:8px">
+          <span class="rsp-label">Speed</span>
+          <button class="dock-speed-btn" onclick="changeSpeed(-1)">−</button>
+          <span id="p-speed-lbl" style="min-width:36px;text-align:center;color:var(--amber-light);font-size:0.88rem">1×</span>
+          <button class="dock-speed-btn" onclick="changeSpeed(1)">+</button>
+        </div>
+        <div class="rsp-row">
+          <span class="rsp-label">Pitch</span>
+          <button class="dock-speed-btn" onclick="changePitch(-1)">−</button>
+          <span id="p-pitch-lbl" style="min-width:36px;text-align:center;color:var(--amber-light);font-size:0.88rem">1.0</span>
+          <button class="dock-speed-btn" onclick="changePitch(1)">+</button>
+        </div>
+        <div class="rsp-row" style="margin-top:8px">
+          <span class="rsp-label">🔊 Voice</span>
+          <input type="range" class="rsp-slider" id="p-voice-vol" min="0" max="100" value="100" oninput="setVoiceVolume(this.value)">
+          <span class="rsp-val" id="p-voice-vol-val">100%</span>
+        </div>
+        <div class="rsp-row">
+          <span class="rsp-label">🎵 Ambient</span>
+          <input type="range" class="rsp-slider" id="p-ambient-vol" min="0" max="100" value="40" oninput="setAmbientVolume(this.value)">
+          <span class="rsp-val" id="p-ambient-vol-val">40%</span>
+        </div>
+      </div>
+
+      <!-- AMBIENT -->
+      <div class="rsp-section">
+        <div class="rsp-section-title">Ambient Sound</div>
+        <div class="rsp-ambient-list" id="p-ambient-list"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <div class="brightness-overlay" id="brightness-overlay"></div>
 
@@ -829,11 +911,6 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
   </div>
 
   <div class="dock-divider"></div>
-
-  <button class="dock-icon-btn" id="ambient-dock-btn" onclick="toggleAmbientPopup()">
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 4.5h2l1.5-3L7 10l2-4.5 1 2.5h2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    Ambient
-  </button>
 
   <button class="dock-icon-btn" id="ambient-dock-btn" onclick="toggleAmbientPopup()">
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 4.5h2l1.5-3L7 10l2-4.5 1 2.5h2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1275,128 +1352,208 @@ function goToLibrary() {
 // EPUB PARSER
 // ═══════════════════════════════════════════
 async function parseEpub(file) {
-  const zip=await JSZip.loadAsync(file);
-  const cxml=await zip.file('META-INF/container.xml').async('text');
-  const parser=new DOMParser();
-  const cdoc=parser.parseFromString(cxml,'application/xml');
-  const opfPath=cdoc.querySelector('rootfile').getAttribute('full-path');
-  const opfDir=opfPath.includes('/')?opfPath.substring(0,opfPath.lastIndexOf('/')+1):'';
-  const oxml=await zip.file(opfPath).async('text');
-  const odoc=parser.parseFromString(oxml,'application/xml');
-  const title=odoc.querySelector('title')?.textContent?.trim()||file.name.replace('.epub','');
-  const author=odoc.querySelector('creator')?.textContent?.trim()||'Unknown';
+  const zip = await JSZip.loadAsync(file);
+  const cxml = await zip.file('META-INF/container.xml').async('text');
+  const parser = new DOMParser();
+  const cdoc = parser.parseFromString(cxml, 'application/xml');
+  const opfPath = cdoc.querySelector('rootfile').getAttribute('full-path');
+  const opfDir = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/')+1) : '';
+  const oxml = await zip.file(opfPath).async('text');
+  const odoc = parser.parseFromString(oxml, 'application/xml');
+  const title = odoc.querySelector('title')?.textContent?.trim() || file.name.replace('.epub','');
+  const author = odoc.querySelector('creator')?.textContent?.trim() || 'Unknown';
 
-  const manifest={};
-  odoc.querySelectorAll('manifest item').forEach(it=>{
-    manifest[it.getAttribute('id')]={href:it.getAttribute('href'),mt:it.getAttribute('media-type')};
+  const manifest = {};
+  odoc.querySelectorAll('manifest item').forEach(it => {
+    manifest[it.getAttribute('id')] = { href: it.getAttribute('href'), mt: it.getAttribute('media-type') };
   });
 
-  // Build title map from NCX (EPUB2) or NAV (EPUB3)
-  const titleMap={};
+  const spineIds = Array.from(odoc.querySelectorAll('spine itemref')).map(i => i.getAttribute('idref'));
 
-  const ncxItem=Object.values(manifest).find(m=>m.mt==='application/x-dtbncx+xml');
-  if(ncxItem){
-    try{
-      const ncxFile=zip.file(opfDir+ncxItem.href)||zip.file(ncxItem.href);
-      if(ncxFile){
-        const ncxXml=await ncxFile.async('text');
-        const ncxDoc=parser.parseFromString(ncxXml,'application/xml');
-        ncxDoc.querySelectorAll('navPoint').forEach(np=>{
-          const label=np.querySelector('navLabel text')?.textContent?.trim();
-          const src=np.querySelector('content')?.getAttribute('src')?.split('#')[0];
-          if(label&&src){ titleMap[src.split('/').pop()]=label; }
+  // ── Load all spine HTML files ──────────────────────────────────────
+  const spineFiles = [];
+  for (const id of spineIds) {
+    const item = manifest[id];
+    if (!item || !item.mt?.includes('html')) continue;
+    const href = item.href;
+    const dir  = href.includes('/') ? href.substring(0, href.lastIndexOf('/')+1) : '';
+    const f    = zip.file(opfDir + href) || zip.file(href);
+    if (!f) continue;
+    const html = await f.async('text');
+    const doc  = parser.parseFromString(html, 'text/html');
+    doc.querySelectorAll('script,style').forEach(e => e.remove());
+    spineFiles.push({ file: href.split('/').pop(), href, dir, doc });
+  }
+
+  // ── Resolve images in parallel ─────────────────────────────────────
+  await Promise.all(spineFiles.map(async sf => {
+    const imgs = Array.from(sf.doc.querySelectorAll('img'));
+    await Promise.all(imgs.map(async img => {
+      const src = img.getAttribute('src');
+      if (!src) { img.remove(); return; }
+      const decoded = src.replace(/&amp;/g, '&');
+      const candidates = [opfDir+sf.dir+decoded, opfDir+decoded, sf.dir+decoded, decoded];
+      let resolved = null;
+      for (const p of candidates) {
+        const clean = p.replace(/[^/]+\/\.\.\//g, '');
+        const entry = zip.file(clean) || zip.file(decodeURIComponent(clean));
+        if (entry) { resolved = entry; break; }
+      }
+      if (!resolved) { img.remove(); return; }
+      try {
+        const ext2 = (decoded.split('.').pop()||'jpg').toLowerCase().replace('jpg','jpeg');
+        const mimeMap = {jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'};
+        const mime = mimeMap[ext2] || 'image/jpeg';
+        const blob = await resolved.async('blob');
+        const url  = URL.createObjectURL(new Blob([blob], {type:mime}));
+        img.setAttribute('src', url);
+        img.style.cssText = 'max-width:100%;height:auto;display:block;margin:1em auto';
+        img.removeAttribute('width'); img.removeAttribute('height');
+      } catch(e) { img.remove(); }
+    }));
+  }));
+
+  // ── Find TOC page by looking for spine file with most internal links ──
+  let tocEntries = []; // [{label, file, anchor}]
+
+  // Try NCX first
+  const ncxItem = Object.values(manifest).find(m => m.mt === 'application/x-dtbncx+xml');
+  if (ncxItem) {
+    try {
+      const ncxFile = zip.file(opfDir + ncxItem.href) || zip.file(ncxItem.href);
+      if (ncxFile) {
+        const ncxXml = await ncxFile.async('text');
+        const ncxDoc = parser.parseFromString(ncxXml, 'application/xml');
+        ncxDoc.querySelectorAll('navPoint').forEach(np => {
+          const label = np.querySelector('navLabel text')?.textContent?.trim();
+          const src   = np.querySelector('content')?.getAttribute('src') || '';
+          const [f, anchor] = src.split('#');
+          if (label && f) tocEntries.push({ label, file: f.split('/').pop(), anchor: anchor||null });
         });
       }
-    }catch(e){}
+    } catch(e) {}
   }
 
-  if(!Object.keys(titleMap).length){
-    const navItem=Object.values(manifest).find(m=>m.mt&&m.mt.includes('html')&&m.href&&m.href.toLowerCase().includes('nav'));
-    if(navItem){
-      try{
-        const navFile=zip.file(opfDir+navItem.href)||zip.file(navItem.href);
-        if(navFile){
-          const navHtml=await navFile.async('text');
-          const navDoc=parser.parseFromString(navHtml,'text/html');
-          navDoc.querySelectorAll('a').forEach(a=>{
-            const label=a.textContent?.trim();
-            const href=a.getAttribute('href')?.split('#')[0];
-            if(label&&href){ titleMap[href.split('/').pop()]=label; }
-          });
-        }
-      }catch(e){}
-    }
-  }
-
-  const spineIds=Array.from(odoc.querySelectorAll('spine itemref')).map(i=>i.getAttribute('idref'));
-  const chapters=[];
-  let chNum=0;
-
-  for(const id of spineIds){
-    const item=manifest[id];
-    if(!item||!item.mt?.includes('html')) continue;
-    const chapterHref=item.href;
-    const chapterDir=chapterHref.includes('/')?chapterHref.substring(0,chapterHref.lastIndexOf('/')+1):'';
-    const chapterFile=chapterHref.split('/').pop();
-    const f=zip.file(opfDir+chapterHref)||zip.file(chapterHref);
-    if(!f) continue;
-    const html=await f.async('text');
-    const doc=parser.parseFromString(html,'text/html');
-    doc.querySelectorAll('script,style,nav').forEach(e=>e.remove());
-
-    // Title priority: NCX/NAV > first valid heading > Chapter N
-    let chTitle=titleMap[chapterFile]||titleMap[decodeURIComponent(chapterFile)]||null;
-    if(!chTitle){
-      const heading=Array.from(doc.querySelectorAll('h1,h2,h3')).find(h=>{
-        const t=h.textContent?.trim();
-        return t&&t.length>2&&t.length<120&&/[a-zA-Z]/.test(t);
+  // Try scraping the Contents page from spine files (most reliable for many EPUBs)
+  // Find the spine file that looks most like a contents/TOC page
+  if (!tocEntries.length) {
+    let bestTocFile = null, bestLinkCount = 0;
+    for (const sf of spineFiles) {
+      const links = Array.from(sf.doc.querySelectorAll('a[href]'));
+      // A TOC page has many links, most pointing to other files or anchors
+      const internalLinks = links.filter(a => {
+        const href = a.getAttribute('href')||'';
+        return href && !href.startsWith('http') && a.textContent.trim().length > 1;
       });
-      chTitle=heading?.textContent?.trim()||null;
-    }
-    if(!chTitle){ chNum++; chTitle='Chapter '+chNum; }
-
-    // Resolve images to base64
-    const imgs=Array.from(doc.querySelectorAll('img'));
-    for(const img of imgs){
-      const src=img.getAttribute('src');
-      if(!src){img.remove();continue;}
-      const decoded=src.replace(/&amp;/g,'&');
-      const candidates=[opfDir+chapterDir+decoded,opfDir+decoded,chapterDir+decoded,decoded];
-      let resolved=null;
-      for(const p of candidates){
-        const clean=p.replace(/[^/]+\/\.\.\//g,'');
-        const entry=zip.file(clean)||zip.file(decodeURIComponent(clean));
-        if(entry){resolved=entry;break;}
+      if (internalLinks.length > bestLinkCount) {
+        bestLinkCount = internalLinks.length;
+        bestTocFile = { sf, links: internalLinks };
       }
-      if(!resolved){img.remove();continue;}
-      try{
-        const bytes=await resolved.async('uint8array');
-        const ext2=(decoded.split('.').pop()||'jpg').toLowerCase().replace('jpg','jpeg');
-        const mimeMap={jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'};
-        const mime=mimeMap[ext2]||'image/jpeg';
-        let binary='';
-        for(let i=0;i<bytes.length;i++) binary+=String.fromCharCode(bytes[i]);
-        img.setAttribute('src','data:'+mime+';base64,'+btoa(binary));
-        img.style.cssText='max-width:100%;height:auto;display:block;margin:1em auto';
-        img.removeAttribute('width');img.removeAttribute('height');
-      }catch(e){img.remove();}
     }
 
-    // Extract clean TTS text — strip headings, images, nav
-    const textClone=doc.body?.cloneNode(true);
-    if(textClone){
-      textClone.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h=>h.remove());
-      textClone.querySelectorAll('img').forEach(img=>img.replaceWith(document.createTextNode(' ')));
-      textClone.querySelectorAll('nav,aside,figcaption').forEach(e=>e.remove());
+    if (bestTocFile && bestLinkCount >= 3) {
+      bestTocFile.links.forEach(a => {
+        const label = a.textContent.trim();
+        const href  = (a.getAttribute('href')||'').split('?')[0];
+        const [f, anchor] = href.split('#');
+        const fileName = f ? f.split('/').pop() : bestTocFile.sf.file;
+        if (label && label.length < 100) {
+          tocEntries.push({ label, file: fileName||bestTocFile.sf.file, anchor: anchor||null });
+        }
+      });
     }
-    const text=(textClone?.textContent||'').replace(/\s+/g,' ').trim();
-    if(text.length<30) continue;
-
-    // Keep headings in rendered HTML (visible to reader)
-    // But TTS text already has them stripped via textClone above
-    chapters.push({title:chTitle, html:doc.body?.innerHTML||text, text});
   }
-  return {title,author,chapters};
+
+  // ── Build a flat DOM index: for each spine file, map anchor->element ──
+  const fileIndex = {}; // filename -> {doc, elements: [{id, el}]}
+  spineFiles.forEach(sf => {
+    const elements = [];
+    sf.doc.body?.querySelectorAll('[id],[name]').forEach(el => {
+      const id = el.id || el.getAttribute('name');
+      if (id) elements.push({ id, el });
+    });
+    fileIndex[sf.file] = { doc: sf.doc, dir: sf.dir, elements, sf };
+  });
+
+  // ── Extract text helper ────────────────────────────────────────────
+  const extractText = (container) => {
+    if (!container) return '';
+    const clone = container.cloneNode(true);
+    clone.querySelectorAll('h1,h2,h3,h4,h5,h6,nav,aside,figcaption').forEach(e => e.remove());
+    clone.querySelectorAll('img').forEach(i => i.replaceWith(document.createTextNode(' ')));
+    return (clone.textContent||'').replace(/\s+/g,' ').trim();
+  };
+
+  // ── Build chapters from TOC entries ───────────────────────────────
+  const chapters = [];
+
+  if (tocEntries.length >= 2) {
+    for (let i = 0; i < tocEntries.length; i++) {
+      const entry     = tocEntries[i];
+      const nextEntry = tocEntries[i+1] || null;
+      const fi        = fileIndex[entry.file];
+      if (!fi) continue;
+
+      let chHTML = '', chText = '';
+
+      if (!entry.anchor && (!nextEntry || nextEntry.file !== entry.file)) {
+        // Whole file = this chapter
+        chHTML = fi.sf.doc.body.innerHTML;
+        chText = extractText(fi.sf.doc.body);
+      } else {
+        // Extract from anchor to next anchor
+        const startId = entry.anchor;
+        const endId   = (nextEntry?.file === entry.file) ? nextEntry.anchor : null;
+
+        const body = fi.sf.doc.body;
+        if (!startId) {
+          chHTML = body.innerHTML;
+          chText = extractText(body);
+        } else {
+          // Collect all elements from startEl to endEl
+          const startEl = startId ? (body.querySelector('#'+CSS.escape(startId)) || body.querySelector('[name="'+startId+'"]')) : null;
+          const endEl   = endId   ? (body.querySelector('#'+CSS.escape(endId))   || body.querySelector('[name="'+endId+'"]'))   : null;
+
+          if (!startEl) {
+            // Anchor not found in this file — use whole file
+            if (i === 0 || tocEntries[i-1]?.file !== entry.file) {
+              chHTML = body.innerHTML;
+              chText = extractText(body);
+            } else continue;
+          } else {
+            const div = document.createElement('div');
+            let node = startEl;
+            while (node) {
+              if (endEl && node === endEl) break;
+              div.appendChild(node.cloneNode(true));
+              node = node.nextElementSibling;
+            }
+            chHTML = div.innerHTML;
+            chText = extractText(div);
+          }
+        }
+      }
+
+      if (chText.length < 30) continue;
+      chapters.push({ title: entry.label, html: chHTML, text: chText });
+    }
+  }
+
+  // ── Fallback: use spine files directly ─────────────────────────────
+  if (chapters.length < 2) {
+    chapters.length = 0;
+    let chNum = 0;
+    for (const sf of spineFiles) {
+      const text = extractText(sf.doc.body);
+      if (text.length < 60) continue;
+      const heading = Array.from(sf.doc.querySelectorAll('h1,h2,h3'))
+        .find(h => { const t=h.textContent?.trim(); return t&&t.length>2&&t.length<100&&/[a-zA-Z]/.test(t); });
+      const chTitle = heading?.textContent?.trim() || ('Chapter '+(++chNum));
+      chapters.push({ title: chTitle, html: sf.doc.body.innerHTML, text });
+    }
+  }
+
+  return { title, author, chapters };
 }
 async function parseTxt(file){
   const text=await file.text();
@@ -1841,7 +1998,7 @@ function changeSpeed(dir){
   if(book){book.lastRate=rate;dbPut('books',book);}
   if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
 }
-function updateSpeedLabel(){ if(EL.speedLbl) EL.speedLbl.textContent=rate+'×'; }
+function updateSpeedLabel(){ if(EL.speedLbl) EL.speedLbl.textContent=rate+'×'; const _psl=document.getElementById('p-speed-lbl'); if(_psl) _psl.textContent=rate+'×'; }
 
 function changePitch(dir){
   const i=PITCHES.findIndex(p=>p>=pitch);
@@ -1850,7 +2007,7 @@ function changePitch(dir){
   if(book){book.lastPitch=pitch;dbPut('books',book);}
   if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
 }
-function updatePitchLabel(){ if(EL.pitchLbl) EL.pitchLbl.textContent=pitch.toFixed(1); }
+function updatePitchLabel(){ if(EL.pitchLbl) EL.pitchLbl.textContent=pitch.toFixed(1); const _ppl=document.getElementById('p-pitch-lbl'); if(_ppl) _ppl.textContent=pitch.toFixed(1); }
 
 // ═══════════════════════════════════════════
 // VOICES
@@ -2027,7 +2184,99 @@ const THEMES = {
   light: { bg:'#f8f6f2', text:'#1a1208', contentBg:'#f8f6f2' },
 };
 
-function toggleReaderSettings(){} function closeReaderSettings(){}
+function toggleReaderSettings(){
+  const overlay = document.getElementById('reader-settings-overlay');
+  const btn = document.getElementById('topbar-settings-btn');
+  const show = overlay.classList.toggle('show');
+  btn.classList.toggle('active', show);
+  if(show) syncPanelToSettings();
+}
+function closeReaderSettings(){
+  document.getElementById('reader-settings-overlay').classList.remove('show');
+  const btn = document.getElementById('topbar-settings-btn');
+  if(btn) btn.classList.remove('active');
+}
+
+// Sync floating panel controls to match current settings state
+function syncPanelToSettings(){
+  // Font size
+  const fs = localStorage.getItem('pl_fontsize')||'18';
+  const pfv = document.getElementById('p-fontsize'); if(pfv) pfv.value=fs;
+  const pfvv = document.getElementById('p-fontsize-val'); if(pfvv) pfvv.textContent=fs+'px';
+
+  // Line height
+  const lh = localStorage.getItem('pl_lineheight')||'1.9';
+  const lhMap={'1.5':'Tight','1.9':'Normal','2.4':'Loose'};
+  document.querySelectorAll('.p-lh-btn').forEach(b=>b.classList.toggle('active', b.textContent===(lhMap[lh]||'Normal')));
+
+  // Theme
+  const th = localStorage.getItem('pl_theme')||'dark';
+  document.querySelectorAll('.p-theme-btn').forEach(b=>b.classList.toggle('active', b.classList.contains('theme-'+th)));
+
+  // Brightness
+  const bv = document.getElementById('p-bright-val');
+  if(bv) bv.textContent=(localStorage.getItem('pl_brightness')||'0')+'%';
+
+  // Speed/Pitch
+  const psl = document.getElementById('p-speed-lbl'); if(psl) psl.textContent=rate+'×';
+  const ppl = document.getElementById('p-pitch-lbl'); if(ppl) ppl.textContent=pitch.toFixed(1);
+
+  // Volume sliders
+  const vv = Math.round(voiceVol*100);
+  const av = Math.round(ambientVol*100);
+  const pvv = document.getElementById('p-voice-vol'); if(pvv) pvv.value=vv;
+  const pvvv = document.getElementById('p-voice-vol-val'); if(pvvv) pvvv.textContent=vv+'%';
+  const pav = document.getElementById('p-ambient-vol'); if(pav) pav.value=av;
+  const pavv = document.getElementById('p-ambient-vol-val'); if(pavv) pavv.textContent=av+'%';
+
+  // Voice select
+  populatePanelVoices();
+
+  // Ambient list
+  renderPanelAmbientList();
+}
+
+function populatePanelVoices(){
+  const sel = document.getElementById('p-voice-select');
+  if(!sel || !voices.length) return;
+  sel.innerHTML = '';
+  const sorted = [...voices].sort((a,b)=>{const an=isNeural(a),bn=isNeural(b);if(an&&!bn)return -1;if(!an&&bn)return 1;return a.name.localeCompare(b.name);});
+  let lastNeural=true;
+  sorted.forEach(v=>{
+    const neural=isNeural(v);
+    if(lastNeural&&!neural){const sep=document.createElement('option');sep.disabled=true;sep.textContent='── Standard ──';sel.appendChild(sep);}
+    lastNeural=neural;
+    const o=document.createElement('option');o.value=v.name;o.textContent=(neural?'★ ':'')+v.name+' ('+v.lang+')';sel.appendChild(o);
+  });
+  if(selVoice) sel.value=selVoice.name;
+}
+
+function voiceChangedPanel(name){
+  // Sync to main voice select and apply
+  const mainSel = document.getElementById('voice-select');
+  if(mainSel) mainSel.value=name;
+  selVoice=voices.find(v=>v.name===name)||null;
+  if(book){book.lastVoice=name;dbPut('books',book);}
+  if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
+}
+
+function renderPanelAmbientList(){
+  const el = document.getElementById('p-ambient-list');
+  if(!el) return;
+  el.innerHTML='';
+  const offOpt=document.createElement('div');
+  offOpt.className='rsp-ambient-opt'+(currentAmbientId===null?' active':'');
+  offOpt.innerHTML='<span style="font-size:1rem">🔇</span><span class="rsp-ambient-name">Off</span>';
+  offOpt.onclick=()=>{selectAmbient(null);renderPanelAmbientList();renderAmbientPopup();};
+  el.appendChild(offOpt);
+  ambientSounds.forEach(s=>{
+    const row=document.createElement('div');
+    row.className='rsp-ambient-opt'+(currentAmbientId===s.id?' active':'');
+    row.innerHTML='<span style="font-size:1rem">'+(s.icon||'♪')+'</span><span class="rsp-ambient-name">'+s.name+'</span>';
+    row.onclick=()=>{selectAmbient(s.id);renderPanelAmbientList();renderAmbientPopup();};
+    el.appendChild(row);
+  });
+}
 
 function setFontSize(val) {
   const rc = document.getElementById('reader-content');
@@ -2059,14 +2308,11 @@ function setTheme(name, btn) {
 function syncVolSliders() {
   const vv = Math.round(voiceVol * 100);
   const av = Math.round(ambientVol * 100);
-  const vvEl = document.getElementById('voice-vol');
-  const avEl = document.getElementById('ambient-vol');
-  if (vvEl) { vvEl.value = vv; }
-  const vvVal = document.getElementById('voice-vol-val');
-  if (vvVal) vvVal.textContent = vv + '%';
-  if (avEl) { avEl.value = av; }
-  const avVal = document.getElementById('ambient-vol-val');
-  if (avVal) avVal.textContent = av + '%';
+  [['voice-vol','voice-vol-val',vv+'%'],['p-voice-vol','p-voice-vol-val',vv+'%'],
+   ['ambient-vol','ambient-vol-val',av+'%'],['p-ambient-vol','p-ambient-vol-val',av+'%']].forEach(([sid,vid,txt])=>{
+    const sl=document.getElementById(sid); if(sl) sl.value=parseInt(txt);
+    const vl=document.getElementById(vid); if(vl) vl.textContent=txt;
+  });
 }
 
 /* renderRspAmbientList removed */
@@ -2110,8 +2356,8 @@ function setBrightness(val) {
   localStorage.setItem('pl_brightness', val);
   const bv = document.getElementById('bright-val');
   if (bv) bv.textContent = val + '%';
-  const dv = document.getElementById('dock-bright-val');
-  if (dv) dv.textContent = val + '%';
+  const dv = document.getElementById('dock-bright-val'); if(dv) dv.textContent=val+'%';
+  const pbv=document.getElementById('p-bright-val'); if(pbv) pbv.textContent=val+'%';
 }
 
 function restoreBrightness() {
