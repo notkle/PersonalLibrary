@@ -125,7 +125,7 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 .reader-content { max-width:660px; margin:0 auto; font-size:1.18rem; line-height:1.9; color:#e5dcc5; font-weight:300; cursor:text; }
 .reader-content p { margin-bottom:1.15em; }
 .reader-content img { max-width:100%; height:auto; display:block; margin:1.2em auto; border-radius:3px; opacity:0.92; }
-.reader-content h1,.reader-content h2,.reader-content h3 { font-family:'Playfair Display',serif; color:var(--paper); margin:1.6em 0 0.5em; font-weight:400; line-height:1.3; }
+.reader-content h1,.reader-content h2,.reader-content h3 { font-family:'Playfair Display',serif; color:inherit; margin:1.6em 0 0.5em; font-weight:400; line-height:1.3; }
 .reader-content h1 { font-size:1.7rem; }
 .reader-content h2 { font-size:1.35rem; }
 .highlight-reading { background:rgba(200,144,42,0.18); border-radius:2px; outline:1px solid rgba(200,144,42,0.15); }
@@ -1416,18 +1416,24 @@ async function parseEpub(file) {
       }catch(e){img.remove();}
     }
 
-    // Extract clean text AFTER image processing
-    // Replace img tags with a space so surrounding words don't merge
+    // Extract clean TTS text — strip headings (already stored as chTitle),
+    // images, and nav elements so they don't get read aloud
     const textClone=doc.body?.cloneNode(true);
     if(textClone){
-      textClone.querySelectorAll('img').forEach(img=>{
-        img.replaceWith(document.createTextNode(' '));
-      });
+      // Remove headings (they are the chapter title, not body text)
+      textClone.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(h=>h.remove());
+      // Remove images (replace with space so words don't merge)
+      textClone.querySelectorAll('img').forEach(img=>img.replaceWith(document.createTextNode(' ')));
+      // Remove nav, aside, figure captions
+      textClone.querySelectorAll('nav,aside,figcaption').forEach(e=>e.remove());
     }
-    const text=(textClone?.textContent||doc.body?.textContent||'').trim();
-    if(text.length<60) continue;
+    const text=(textClone?.textContent||'').replace(/\s+/g,' ').trim();
+    if(text.length<30) continue;
 
-    chapters.push({title:chTitle,html:doc.body?.innerHTML||text,text});
+    // Strip headings from rendered HTML too so it matches TTS text exactly
+    doc.body?.querySelectorAll('h1,h2,h3,h4,h5,h6,nav,aside,figcaption').forEach(e=>e.remove());
+    const cleanHtml = doc.body?.innerHTML || text;
+    chapters.push({title:chTitle, html:cleanHtml, text});
   }
   return {title,author,chapters};
 }
@@ -1689,12 +1695,46 @@ function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 
 function clearHighlight(cls){ /* handled by _originalChapterHTML restore */ }
 function highlightText(text,cls){ return document.querySelector('.'+cls); }
-let _highlightTimer=null;
+
+let _originalChapterHTML = '';
+let _lastHighlightedIdx = -1;
+
 function highlightReading(){
-  clearHighlight('highlight-reading');
-  if(sentences[sIdx]) highlightText(sentences[sIdx],'highlight-reading');
+  const content = document.getElementById('reader-content');
+  if(!content) return;
+  const sentence = sentences[sIdx];
+
+  // Restore clean HTML before applying new highlight
+  if(_originalChapterHTML) content.innerHTML = _originalChapterHTML;
+  if(!sentence) return;
+
+  const clean = normalizeWS(sentence);
+  if(!clean || clean.length < 3) return;
+
+  const words = clean.split(' ').filter(w => w.length > 0);
+  if(!words.length) return;
+
+  // Try progressively shorter matches so sentences near images still get highlighted
+  const attempts = [words, words.slice(0,8), words.slice(0,5), words.slice(0,3)];
+  for(const wds of attempts){
+    if(!wds.length) continue;
+    const pattern = wds.map(w => escRe(w)).join('[\s\S]{0,80}');
+    try{
+      const re = new RegExp('(' + pattern + ')', 'i');
+      const newHTML = content.innerHTML.replace(re, '<span class="highlight-reading">$1</span>');
+      if(newHTML !== content.innerHTML){
+        content.innerHTML = newHTML;
+        break;
+      }
+    } catch(e){ continue; }
+  }
+  _lastHighlightedIdx = sIdx;
 }
-function scrollToReading(){ const el=document.querySelector('.highlight-reading'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); }
+
+function scrollToReading(){
+  const el = document.querySelector('.highlight-reading');
+  if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+}
 
 // ═══════════════════════════════════════════
 // SCROLLBAR
