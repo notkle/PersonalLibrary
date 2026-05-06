@@ -1588,8 +1588,36 @@ async function parseEpub(file) {
     if (!el) return '';
     const clone = el.cloneNode(true);
     clone.querySelectorAll('h1,h2,h3,h4,h5,h6,nav,aside,figcaption').forEach(e => e.remove());
+    clone.querySelectorAll('a,sup,sub').forEach(e => e.remove());
     clone.querySelectorAll('img').forEach(i => i.replaceWith(document.createTextNode(' ')));
     return (clone.textContent||'').replace(/\s+/g,' ').trim();
+  };
+
+  // Clean a DOM fragment: remove links/footnotes, promote all-caps headings
+  // Called at parse time so loadChapter never needs to touch the DOM
+  const cleanDOM = (el) => {
+    if(!el) return;
+    // Remove footnote links (numeric/punctuation only)
+    el.querySelectorAll('a').forEach(a => {
+      const txt = a.textContent.trim();
+      const isFootnote = /^[\d\s\[\]\(\)\*†‡§#\.]+$/.test(txt) || txt.length === 0;
+      if(isFootnote) a.remove();
+      else a.replaceWith(document.createTextNode(txt));
+    });
+    // Remove superscript/subscript footnote numbers
+    el.querySelectorAll('sup,sub').forEach(e => e.remove());
+    // Promote all-caps short paragraphs to h3
+    el.querySelectorAll('p').forEach(p => {
+      const txt = p.textContent.trim();
+      if(!txt || txt.length > 60 || txt.length < 2) return;
+      const letters = txt.replace(/[^a-zA-Z]/g,'');
+      if(!letters || letters !== letters.toUpperCase()) return;
+      if(p.closest('h1,h2,h3,h4,h5,h6')) return;
+      const h = document.createElement('h3');
+      h.innerHTML = p.innerHTML;
+      h.className = p.className;
+      p.replaceWith(h);
+    });
   };
 
   const allHeadings = Array.from(masterBody.querySelectorAll('h1,h2,h3,h4,h5,h6'));
@@ -1683,7 +1711,9 @@ async function parseEpub(file) {
       if (text.length < 60) continue;
       const h = Array.from(sd.doc.querySelectorAll('h1,h2,h3'))
         .find(h => { const t=h.textContent?.trim()||''; return t.length>2&&t.length<100&&/[a-zA-Z]/.test(t); });
-      chapters.push({ title: h?.textContent?.trim()||('Chapter '+(++chNum)), html: sd.doc.body?.innerHTML||text, text });
+      if(sd.doc.body) cleanDOM(sd.doc.body);
+      const cleanText = extractText(sd.doc.body || sd.doc.documentElement);
+      chapters.push({ title: h?.textContent?.trim()||('Chapter '+(++chNum)), html: sd.doc.body?.innerHTML||cleanText, text: cleanText });
     }
   }
 
@@ -1853,48 +1883,16 @@ function loadChapter(ci,si=0){
   if(!ch) return;
   document.getElementById('chapter-select').value=ci;
   document.getElementById('prog-chapter').textContent=ch.title.slice(0,36);
-  // sentences built from DOM after render — see below
   const content=document.getElementById('reader-content');
   content.innerHTML=ch.html||ch.text;
   content.querySelectorAll('script,style').forEach(e=>e.remove());
-  // Remove hyperlinks completely:
-  // - If the link text is purely numeric/punctuation (footnote ref) — delete entirely
-  // - If the link has real text — keep text, remove tag
-  content.querySelectorAll('a').forEach(a=>{
-    const txt = a.textContent.trim();
-    const isFootnote = /^[\d\s\[\]\(\)\*†‡§#\.]+$/.test(txt) || txt.length === 0;
-    if(isFootnote) a.remove();
-    else a.replaceWith(document.createTextNode(txt));
-  });
-  // Remove superscript/subscript footnote numbers entirely
-  content.querySelectorAll('sup,sub').forEach(e=>e.remove());
-
-  // Promote all-caps short paragraphs to h2 (fake headings used by many publishers)
-  content.querySelectorAll('p').forEach(el => {
-    const txt = el.textContent.trim();
-    if(!txt || txt.length > 60 || txt.length < 2) return;
-    // Must be all uppercase letters (allow spaces, punctuation, apostrophes)
-    const lettersOnly = txt.replace(/[^a-zA-Z]/g,'');
-    if(!lettersOnly || lettersOnly !== lettersOnly.toUpperCase()) return;
-    // Skip if already inside a heading
-    if(el.closest('h1,h2,h3,h4,h5,h6')) return;
-    const h = document.createElement('h3');
-    h.innerHTML = el.innerHTML;
-    h.className = el.className;
-    el.replaceWith(h);
-  });
-
-  // Build sentences from innerHTML with entities decoded — matches what replace() searches
-  const tmp = document.createElement("div"); tmp.innerHTML = _originalChapterHTML;
-  sentences = splitSentences(tmp.textContent || "");
-  sentenceCache[ci] = sentences;
-  _originalChapterHTML = content.innerHTML;
-  _lastHighlightedIdx = -1;
-
+  _originalChapterHTML=content.innerHTML;
+  sentences=sentenceCache[ci]||splitSentences(ch.text);
+  sentenceCache[ci]=sentences;
+  _lastHighlightedIdx=-1;
   updateScrollbar(); updateProgress(); highlightReading();
-  // Scroll to top of chapter on load, not to highlight
-  const scroll = document.getElementById('reader-scroll');
-  if(scroll) scroll.scrollTop = 0;
+  const scroll=document.getElementById('reader-scroll');
+  if(scroll) scroll.scrollTop=0;
 }
 
 
@@ -1956,12 +1954,9 @@ function highlightReading(){
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
 
-  // Simple innerHTML replace — sentence string guaranteed to exist in the HTML text
-  // Encode sentence to match innerHTML entities using a temp element
-  const enc = document.createElement("p"); enc.textContent = sentence;
-  const encodedSentence = enc.innerHTML;
-  const re = new RegExp("(" + encodedSentence.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "");
-  const newHTML = content.innerHTML.replace(re, '<span class="highlight-reading">$1</span>');
+  const esc = sentence.replace(/[.*+?^${}()|[\]\\]/g,'\$&');
+  const re = new RegExp('('+esc+')','');
+  const newHTML = content.innerHTML.replace(re,'<span class="highlight-reading">$1</span>');
   if(newHTML !== content.innerHTML) content.innerHTML = newHTML;
 
   _lastHighlightedIdx = sIdx;
