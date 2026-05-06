@@ -1946,43 +1946,33 @@ function highlightReading(){
   const content = document.getElementById('reader-content');
   if(!content) return;
 
-  // Remove previous highlight span cleanly (don't touch innerHTML — preserves blob image URLs)
+  // Remove previous highlight
   content.querySelectorAll('.highlight-reading').forEach(span => {
-    const parent = span.parentNode;
-    while(span.firstChild) parent.insertBefore(span.firstChild, span);
-    parent.removeChild(span);
-    parent.normalize();
+    const p = span.parentNode;
+    while(span.firstChild) p.insertBefore(span.firstChild, span);
+    p.removeChild(span);
+    p.normalize();
   });
 
   const sentence = sentences[sIdx];
   if(!sentence || sentence.length < 2) return;
 
-  // Take first 5 letters-only words as probe
-  const words = [];
-  for(const w of sentence.split(/\s+/)){
-    const clean = w.replace(/[^a-zA-Z]/g,'');
-    if(clean.length > 1) words.push(clean);
-    if(words.length === 5) break;
-  }
-  if(!words.length) return;
-
-  // Walk text nodes and find the first one containing our probe words
-  const probe = words[0].toLowerCase();
+  // Exact match: sentence string from split() exists verbatim in the DOM text
   const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
   let node;
   while(node = walker.nextNode()){
-    if(node.nodeValue.toLowerCase().includes(probe)){
-      // Wrap matching portion in highlight span
-      const idx = node.nodeValue.toLowerCase().indexOf(probe);
-      // Find end of sentence in this node (up to 200 chars)
-      // Highlight the entire text node that contains this sentence's first word
-      const span = document.createElement('span');
-      span.className = 'highlight-reading';
-      span.textContent = node.nodeValue;
-      const parent = node.parentNode;
-      parent.replaceChild(span, node);
-      break;
-    }
+    const idx = node.nodeValue.indexOf(sentence);
+    if(idx === -1) continue;
+    const frag = document.createDocumentFragment();
+    if(idx > 0) frag.appendChild(document.createTextNode(node.nodeValue.slice(0, idx)));
+    const span = document.createElement('span');
+    span.className = 'highlight-reading';
+    span.textContent = sentence;
+    frag.appendChild(span);
+    const end = idx + sentence.length;
+    if(end < node.nodeValue.length) frag.appendChild(document.createTextNode(node.nodeValue.slice(end)));
+    node.parentNode.replaceChild(frag, node);
+    return;
   }
   _lastHighlightedIdx = sIdx;
 }
