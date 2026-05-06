@@ -1452,14 +1452,22 @@ async function parseEpub(file) {
     }
 
     if (bestTocFile && bestLinkCount >= 3) {
+      const seen = new Set();
       bestTocFile.links.forEach(a => {
         const label = a.textContent.trim();
+        if (!label || label.length > 100 || label.length < 1) return;
         const href  = (a.getAttribute('href')||'').split('?')[0];
+        if (!href) return;
         const [f, anchor] = href.split('#');
-        const fileName = f ? f.split('/').pop() : bestTocFile.sf.file;
-        if (label && label.length < 100) {
-          tocEntries.push({ label, file: fileName||bestTocFile.sf.file, anchor: anchor||null });
-        }
+        // Resolve filename - handle relative paths like "../Text/chapter1.html"
+        const rawFile = f || '';
+        const fileName = rawFile.split('/').pop() || bestTocFile.sf.file;
+        const key = fileName + '#' + (anchor||'');
+        if (seen.has(key)) return; // deduplicate
+        seen.add(key);
+        // Skip if this link points to the TOC file itself with no anchor
+        if (fileName === bestTocFile.sf.file && !anchor) return;
+        tocEntries.push({ label, file: fileName, anchor: anchor||null });
       });
     }
   }
@@ -1515,16 +1523,43 @@ async function parseEpub(file) {
           const endEl   = endId   ? (body.querySelector('#'+CSS.escape(endId))   || body.querySelector('[name="'+endId+'"]'))   : null;
 
           if (!startEl) {
-            // Anchor not found in this file — use whole file
-            if (i === 0 || tocEntries[i-1]?.file !== entry.file) {
+            // Anchor not found — try finding by name attribute
+            const byName = body.querySelector('[name="'+startId+'"]');
+            if (!byName && (i === 0 || tocEntries[i-1]?.file !== entry.file)) {
               chHTML = body.innerHTML;
               chText = extractText(body);
+            } else if (byName) {
+              const div = document.createElement('div');
+              let node = byName;
+              while (node) {
+                if (endEl && node === endEl) break;
+                div.appendChild(node.cloneNode(true));
+                node = node.nextElementSibling;
+              }
+              chHTML = div.innerHTML;
+              chText = extractText(div);
             } else continue;
           } else {
+            // startEl found — collect from startEl's parent block if it's inline
+            // (handles anchors that are inside <p> or <h> tags)
+            let startNode = startEl;
+            // If anchor is inline (a, span), go up to block parent
+            const inlineTags = new Set(['A','SPAN','EM','STRONG','B','I','SMALL']);
+            while(startNode.parentElement && startNode.parentElement !== body && inlineTags.has(startNode.nodeName)){
+              startNode = startNode.parentElement;
+            }
             const div = document.createElement('div');
-            let node = startEl;
+            let node = startNode;
             while (node) {
-              if (endEl && node === endEl) break;
+              if (endEl) {
+                // Check if endEl is inside this node
+                let checkNode = endEl;
+                while(checkNode && checkNode !== body){
+                  if(checkNode === node){ node=null; break; }
+                  checkNode = checkNode.parentElement;
+                }
+                if(!node) break;
+              }
               div.appendChild(node.cloneNode(true));
               node = node.nextElementSibling;
             }
@@ -1995,6 +2030,7 @@ function changeSpeed(dir){
   const i=SPEEDS.findIndex(s=>s>=rate);
   rate=SPEEDS[Math.max(0,Math.min(SPEEDS.length-1,i+dir))];
   updateSpeedLabel();
+  localStorage.setItem('pl_rate', rate);
   if(book){book.lastRate=rate;dbPut('books',book);}
   if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
 }
@@ -2004,6 +2040,7 @@ function changePitch(dir){
   const i=PITCHES.findIndex(p=>p>=pitch);
   pitch=PITCHES[Math.max(0,Math.min(PITCHES.length-1,i+dir))];
   updatePitchLabel();
+  localStorage.setItem('pl_pitch', pitch);
   if(book){book.lastPitch=pitch;dbPut('books',book);}
   if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
 }
@@ -2028,12 +2065,19 @@ function loadVoices(){
     lastNeural=neural;
     const o=document.createElement('option'); o.value=v.name; o.textContent=(neural?'★ ':'')+v.name+' ('+v.lang+')'; sel.appendChild(o);
   });
-  if(saved&&sorted.find(v=>v.name===saved)){ sel.value=saved; selVoice=sorted.find(v=>v.name===saved); }
-  else { const best=sorted.find(v=>isNeural(v))||sorted[0]; if(best){sel.value=best.name;selVoice=best;} }
+  // Restore global saved voice preference
+  const globalVoice = book?.lastVoice || localStorage.getItem('pl_voice') || saved;
+  if(globalVoice && sorted.find(v=>v.name===globalVoice)){
+    sel.value=globalVoice; selVoice=sorted.find(v=>v.name===globalVoice);
+  } else {
+    const best=sorted.find(v=>isNeural(v))||sorted[0];
+    if(best){sel.value=best.name;selVoice=best;}
+  }
 }
 function voiceChanged(){
   const name=document.getElementById('voice-select').value;
   selVoice=voices.find(v=>v.name===name)||null;
+  localStorage.setItem('pl_voice', name);
   if(book){book.lastVoice=name;dbPut('books',book);}
   if(playing){window.speechSynthesis.cancel();speak(sentences[sIdx]);}
 }
@@ -2565,6 +2609,11 @@ async function init(){
   // Database + data
   cacheElements();
   attachClickToJump();
+  // Restore global rate/pitch preferences
+  const _savedRate = parseFloat(localStorage.getItem('pl_rate')||'1.0');
+  const _savedPitch = parseFloat(localStorage.getItem('pl_pitch')||'1.0');
+  if(!isNaN(_savedRate))  rate  = _savedRate;
+  if(!isNaN(_savedPitch)) pitch = _savedPitch;
   await openDB();
   books = await dbAll('books');
   books.sort((a,b) => b.addedAt - a.addedAt);
