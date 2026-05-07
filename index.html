@@ -2278,7 +2278,7 @@ function changePitch(dir){
   if(book){book.lastPitch=pitch;dbPut('books',book);}
   if(playing){window.speechSynthesis.cancel();speak(sentenceTexts[sIdx]||"");}
 }
-function updatePitchLabel(){ if(EL.pitchLbl) EL.pitchLbl.textContent=pitch.toFixed(1); const _ppl=document.getElementById('p-pitch-lbl'); if(_ppl) _ppl.textContent=pitch.toFixed(1); }
+function updatePitchLabel(){ if(EL.pitchLbl) EL.pitchLbl.textContent=pitch.toFixed(2); const _ppl=document.getElementById('p-pitch-lbl'); if(_ppl) _ppl.textContent=pitch.toFixed(2); }
 
 // ═══════════════════════════════════════════
 // VOICES
@@ -2527,7 +2527,7 @@ function syncPanelToSettings(){
 
   // Speed/Pitch
   const psl = document.getElementById('p-speed-lbl'); if(psl) psl.textContent=rate+'×';
-  const ppl = document.getElementById('p-pitch-lbl'); if(ppl) ppl.textContent=pitch.toFixed(1);
+  const ppl = document.getElementById('p-pitch-lbl'); if(ppl) ppl.textContent=pitch.toFixed(2);
 
   // Volume sliders
   const vv = Math.round(voiceVol*100);
