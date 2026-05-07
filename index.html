@@ -2921,6 +2921,7 @@ function initBookDrag(spine, bookId){
     ghost.style.left=(e.clientX-77)+'px'; ghost.style.top=(e.clientY-18)+'px';
     ghost.classList.add('ghost-visible');
     spine.classList.add('dragging-source');
+    spine.style.transform='translateY(0)';
     document.getElementById('return-slot')?.classList.add('pulsing');
     document.querySelector('.return-slot-label')?.classList.add('pulsing');
     const onMove = e2=>{
@@ -2939,7 +2940,7 @@ function initBookDrag(spine, bookId){
     };
     const onUp = e2=>{
       document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp);
-      document.querySelectorAll('#bookshelf-row .book-spine.dragging-source').forEach(s=>s.classList.remove('dragging-source'));
+      document.querySelectorAll('#bookshelf-row .book-spine.dragging-source').forEach(s=>{ s.classList.remove('dragging-source'); s.style.transform=''; });
       ghost.classList.remove('ghost-visible');
       document.getElementById('return-slot')?.classList.remove('slot-hover','pulsing');
       document.querySelector('.return-slot-label')?.classList.remove('pulsing');
