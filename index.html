@@ -2920,6 +2920,7 @@ function initBookDrag(spine, bookId){
     buildGhostStack(bookId);
     ghost.style.left=(e.clientX-77)+'px'; ghost.style.top=(e.clientY-18)+'px';
     ghost.classList.add('ghost-visible');
+    spine.classList.add('dragging-source');
     document.getElementById('return-slot')?.classList.add('pulsing');
     document.querySelector('.return-slot-label')?.classList.add('pulsing');
     const onMove = e2=>{
