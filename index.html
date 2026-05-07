@@ -1550,8 +1550,8 @@ async function parseEpub(file) {
       try {
         const ext  = (decoded.split('.').pop()||'jpg').toLowerCase().replace('jpg','jpeg');
         const mime = ({jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'})[ext]||'image/jpeg';
-        const blob = await entry.async('blob');
-        img.setAttribute('src', URL.createObjectURL(new Blob([blob],{type:mime})));
+        const b64 = await entry.async('base64');
+        img.setAttribute('src', `data:${mime};base64,${b64}`);
         img.style.cssText = 'max-width:100%;height:auto;display:block;margin:1em auto';
         img.removeAttribute('width'); img.removeAttribute('height');
       } catch(e) { img.remove(); }
