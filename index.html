@@ -1892,6 +1892,8 @@ function renderLibrary(){
   const row=document.getElementById('books-row');
   const empty=document.getElementById('empty-shelf');
   row.querySelectorAll('.book-spine').forEach(e=>e.remove());
+  // Always hide empty shelf — My Book spine is always present
+  if(empty) empty.style.display='none';
   // Always render "My Book" spine first
   const mySpine=document.createElement('div');
   mySpine.className='book-spine';
@@ -1899,7 +1901,7 @@ function renderLibrary(){
   mySpine.innerHTML=`<div class="book-spine-inner"><div class="spine-line"></div><div class="spine-title" style="opacity:0.9">My Book</div><div class="spine-author" style="opacity:0.5">—</div><div class="spine-line"></div></div>`;
   mySpine.addEventListener('click',()=>openMyBook());
   row.appendChild(mySpine);
-  if(!books.length){empty.style.display='none';document.getElementById('lib-count').textContent='No books yet';return;}
+  if(!books.length){document.getElementById('lib-count').textContent='No books yet';return;}
   empty.style.display='none';
   document.getElementById('lib-count').textContent=`${books.length} book${books.length!==1?'s':''} in your collection`;
   books.forEach(b=>{
