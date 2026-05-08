@@ -3178,6 +3178,118 @@ function clearMyBook(){
 
 function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.toggle('show'); }
 
+async function init(){
+  // Database + data
+  cacheElements();
+  attachClickToJump();
+  // Restore global rate/pitch preferences
+  const _savedRate = parseFloat(localStorage.getItem('pl_rate')||'1.0');
+  const _savedPitch = parseFloat(localStorage.getItem('pl_pitch')||'1.0');
+  if(!isNaN(_savedRate))  rate  = _savedRate;
+  if(!isNaN(_savedPitch)) pitch = _savedPitch;
+  // Update display labels now that elements are cached
+  updateSpeedLabel();
+  updatePitchLabel();
+  await openDB();
+  books = await dbAll('books');
+  books.sort((a,b) => b.addedAt - a.addedAt);
+  renderLibrary();
+  // Restore open book from before page refresh
+  const _lastOpenBook = sessionStorage.getItem('pl_open_book');
+  if(_lastOpenBook && books.find(b=>b.id===_lastOpenBook)){
+    openBook(_lastOpenBook);
+  }
+  await loadAmbientSounds();
+  restoreVolPrefs();
+  loadYTApi();
+  setTimeout(loadVoices, 300);
+  restoreAppearancePrefs();
+  syncVolSliders();
+  restoreBrightness();
+  updateBookmarkBtn();
+
+  // ── File upload ──────────────────────────────────────────────────────
+  const fileInput = document.getElementById('file-input');
+  if(fileInput){
+    fileInput.addEventListener('change', e => {
+      if(e.target.files.length) handleFiles(e.target.files);
+      e.target.value = '';
+    });
+  }
+
+  const uz = document.getElementById('upload-zone');
+  if(uz){
+    uz.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if(fileInput){ fileInput.value=''; fileInput.click(); }
+    });
+    uz.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over'); });
+    uz.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over'); });
+    uz.addEventListener('dragleave', e => { e.stopPropagation(); uz.classList.remove('drag-over'); });
+    uz.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      uz.classList.remove('drag-over');
+      if(e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    });
+  }
+
+  // Also allow dropping anywhere on library view
+  const lv = document.getElementById('library-view');
+  if(lv){
+    lv.addEventListener('dragenter', e => { e.preventDefault(); if(uz) uz.classList.add('drag-over'); });
+    lv.addEventListener('dragover',  e => { e.preventDefault(); if(uz) uz.classList.add('drag-over'); });
+    lv.addEventListener('dragleave', e => { if(!lv.contains(e.relatedTarget) && uz) uz.classList.remove('drag-over'); });
+    lv.addEventListener('drop', e => {
+      e.preventDefault();
+      if(uz) uz.classList.remove('drag-over');
+      if(e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+    });
+  }
+
+  // Prevent browser opening file if dropped outside zone
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop',     e => e.preventDefault());
+
+  // ── Reader controls ──────────────────────────────────────────────────
+  const chapterSel = document.getElementById('chapter-select');
+  if(chapterSel) chapterSel.addEventListener('change', e => loadChapter(parseInt(e.target.value), 0));
+
+  const readerScroll = document.getElementById('reader-scroll');
+  if(readerScroll) readerScroll.addEventListener('scroll', syncScrollbar);
+
+  const searchInput = document.getElementById('search-input');
+  if(searchInput){
+    searchInput.addEventListener('input', e => {
+      const q = e.target.value;
+      document.getElementById('search-x').classList.toggle('show', q.length > 0);
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => doSearch(q), 180);
+    });
+  }
+
+  const searchX = document.getElementById('search-x');
+  if(searchX){
+    searchX.addEventListener('click', () => {
+      document.getElementById('search-input').value = '';
+      searchX.classList.remove('show');
+      doSearch('');
+    });
+  }
+
+  window.addEventListener('resize', () => { if(book) updateScrollbar(); });
+
+  document.addEventListener('keydown', e => {
+    if(e.target.tagName==='INPUT' || e.target.tagName==='SELECT' || e.target.tagName==='TEXTAREA') return;
+    if(!book) return;
+    if(e.code==='Space')      { e.preventDefault(); togglePlay(); }
+    if(e.code==='ArrowRight') nextSentence();
+    if(e.code==='ArrowLeft')  prevSentence();
+  });
+
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
 init();
 </script>
 </body>
