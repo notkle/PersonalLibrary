@@ -134,6 +134,7 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 /* READER VIEW */
 #reader-view { display:none; position:fixed; inset:0; top:56px; overflow:hidden; }
 #reader-view.active { display:flex; flex-direction:column; }
+#mybook-view.active { display:flex; flex-direction:column; }
 .reader-topbar { flex-shrink:0; height:44px; background:#0d0900; border-bottom:1px solid rgba(200,144,42,0.15); display:flex; align-items:center; gap:14px; padding:0 20px; }
 .reader-book-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--amber-light); font-style:italic; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .chapter-select { background:#2a1e0e; border:1px solid rgba(200,144,42,0.25); color:var(--paper); font-family:'Crimson Pro',serif; font-size:0.88rem; padding:4px 8px; border-radius:3px; cursor:pointer; max-width:200px; }
@@ -187,7 +188,7 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 /* DOCK */
 .dock-wrap { position:fixed; bottom:0; left:0; right:0; z-index:400; transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); }
 .dock-wrap.collapsed { transform:translateY(calc(100% - 10px)); }
-body.hide-dock .dock-wrap { transform:translateY(100%) !important; pointer-events:none; }
+body.hide-dock .dock-wrap { transform:translateY(calc(100% + 20px)) !important; pointer-events:none; }
 .dock-toggle { position:absolute; top:-18px; left:50%; transform:translateX(-50%); width:48px; height:18px; background:rgba(12,8,2,0.97); border:1px solid rgba(200,144,42,0.25); border-bottom:none; border-radius:8px 8px 0 0; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:1; transition:background 0.15s; white-space:nowrap; }
 .dock-toggle:hover { background:rgba(30,20,5,0.99); }
 .dock-toggle svg { color:rgba(200,144,42,0.6); transition:transform 0.3s, color 0.15s; }
@@ -1158,7 +1159,11 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
 
 <!-- MY BOOK VIEW -->
 <div id="mybook-view" class="view">
-  <div style="padding:36px 36px 120px; overflow-y:auto; height:100%; background:var(--bg);">
+  <div class="reader-topbar">
+    <div class="reader-book-title">My <em style="font-style:italic">Book</em></div>
+    <button class="topbar-settings-btn" onclick="toggleReaderSettings()" title="Settings">⚙</button>
+  </div>
+  <div style="flex:1; overflow-y:auto; padding:36px 36px 120px; background:var(--bg);">
     <div style="max-width:680px; margin:0 auto;">
       <div style="margin-bottom:24px; display:flex; align-items:center; justify-content:space-between;">
         <div>
