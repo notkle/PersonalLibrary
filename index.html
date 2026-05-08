@@ -187,7 +187,7 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 /* DOCK */
 .dock-wrap { position:fixed; bottom:0; left:0; right:0; z-index:400; transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); }
 .dock-wrap.collapsed { transform:translateY(calc(100% - 10px)); }
-body.in-library .dock-wrap { transform:translateY(100%) !important; }
+body.hide-dock .dock-wrap { transform:translateY(100%) !important; pointer-events:none; }
 .dock-toggle { position:absolute; top:-18px; left:50%; transform:translateX(-50%); width:48px; height:18px; background:rgba(12,8,2,0.97); border:1px solid rgba(200,144,42,0.25); border-bottom:none; border-radius:8px 8px 0 0; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:1; transition:background 0.15s; white-space:nowrap; }
 .dock-toggle:hover { background:rgba(30,20,5,0.99); }
 .dock-toggle svg { color:rgba(200,144,42,0.6); transition:transform 0.3s, color 0.15s; }
@@ -677,7 +677,7 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
 .bookmark-modal-btns .btn { flex:1; text-align:center; }
 </style>
 </head>
-<body class="in-library">
+<body class="in-library hide-dock">
 
 <header>
   <div class="logo" onclick="goToLibrary()" style="cursor:pointer" title="Go to library">
@@ -1173,7 +1173,6 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
         onfocus="this.style.borderColor='rgba(200,144,42,0.4)'"
         onblur="this.style.borderColor='rgba(200,144,42,0.18)'"
         oninput="myBookChanged()"
-        onpaste="handleMyBookPaste(event)"
         data-placeholder="Start typing, or paste an image…"
       ></div>
     </div>
@@ -1474,7 +1473,7 @@ function showLibraryView() {
   document.getElementById('bookshelf-btn').style.display='block';
   document.getElementById('settings-btn').style.display='block';
   document.body.classList.add('in-library');
-  document.getElementById('dock').classList.remove('visible');
+  document.body.classList.add('hide-dock');
 }
 function showBookshelfView() {
   hideAllViews();
@@ -1483,7 +1482,7 @@ function showBookshelfView() {
   document.getElementById('bookshelf-btn').style.display='none';
   document.getElementById('settings-btn').style.display='block';
   document.body.classList.add('in-library');
-  document.getElementById('dock').classList.remove('visible');
+  document.body.classList.add('hide-dock');
   renderBookshelf();
 }
 function showMyBookView() {
@@ -1495,7 +1494,7 @@ function showMyBookView() {
   document.getElementById('settings-btn').style.display='none';
   document.body.classList.add('in-library');
   document.getElementById('dock').classList.remove('visible');
-  loadMyBookIntoReader();
+  // dock stays visible in My Book
 }
 
 function showSettingsView() {
@@ -1505,7 +1504,8 @@ function showSettingsView() {
   document.getElementById('bookshelf-btn').style.display='none';
   document.getElementById('settings-btn').style.display='none';
   document.body.classList.add('in-library');
-  document.getElementById('dock').classList.remove('visible');
+  document.body.classList.add('in-library');
+  document.body.classList.add('hide-dock');
 }
 function showReaderView() {
   hideAllViews();
@@ -1516,6 +1516,7 @@ function showReaderView() {
   document.getElementById('bookshelf-btn').style.display='none';
   document.getElementById('settings-btn').style.display='none';
   document.body.classList.remove('in-library');
+  document.body.classList.remove('hide-dock');
 }
 function goToLibrary() {
   stopSpeech();
@@ -1884,7 +1885,6 @@ function openBook(id){
   book=books.find(b=>b.id===id);
   if(!book) return;
   sessionStorage.setItem('pl_open_book', id);
-  sessionStorage.setItem('pl_open_book', id);
   chIdx=book.lastCh||0; sIdx=book.lastS||0;
   rate=book.lastRate||1.0; pitch=book.lastPitch||1.0;
   sleepChIdx=null; sleepSIdx=null;
@@ -2185,6 +2185,12 @@ function syncScrollbar(){
 let _progressSaveTimer=null;
 function updateProgress(){
   if(!book) return;
+  if(book.id==='__mybook__'){
+    const pct=sentences.length>0?Math.round(sIdx/sentences.length*100):0;
+    if(EL.progFill) EL.progFill.style.width=pct+'%';
+    if(EL.progPct)  EL.progPct.textContent=pct+'%';
+    return;
+  }
   const totalChars=book.chapters.reduce((a,ch)=>a+(ch.text?.length||0),0);
   const avgCharPerSent = totalChars > 0 ? totalChars / (totalSentences||1) : 80;
   let acc=0;
@@ -2250,7 +2256,7 @@ function doAdvance(){
     sIdx++;
     highlightReading(); scrollToReading(); updateProgress();
     if(playing) speak(sentenceTexts[sIdx]||"");
-  } else if(chIdx<book.chapters.length-1){
+  } else if(book.id!=='__mybook' && chIdx<book.chapters.length-1){
     const wasPlaying = playing;
     loadChapter(chIdx+1, 0);
     // Scroll to top of new chapter
@@ -2506,7 +2512,7 @@ function toggleDock(){
   localStorage.setItem('pl_dock_collapsed', dockCollapsed);
   applyDockState();
 }
-applyDockState();
+// applyDockState called in init
 
 // ═══════════════════════════════════════════
 // CONTEXT MENU
@@ -3030,13 +3036,24 @@ function confirmDeleteSelected(){
 // ═══════════════════════════════════════════
 const MYBOOK_KEY = 'pl_mybook_text';
 
-function openMyBook(){ showMyBookView(); }
+function openMyBook(){
+  // Set a minimal book-like object so dock functions work
+  book = { title:'My Book', chapters:[], lastCh:0, lastS:0, lastRate:rate, lastPitch:pitch, id:'__mybook__' };
+  chIdx=0; sIdx=0;
+  showMyBookView();
+}
 
 function loadMyBookIntoReader(){
   const saved = localStorage.getItem(MYBOOK_KEY) || '';
   const field = document.getElementById('mybook-field');
-  if(field) field.textContent = saved;
+  if(!field) return;
+  field.textContent = saved;
   if(saved.trim()) syncMyBookToReader();
+  // Attach paste handler via JS (more reliable than onpaste attribute on contenteditable)
+  if(!field._pasteAttached){
+    field._pasteAttached = true;
+    field.addEventListener('paste', handleMyBookPaste);
+  }
 }
 
 function myBookChanged(){
