@@ -272,6 +272,17 @@ body.in-library .dock-wrap { transform:translateY(100%) !important; }
 .voice-guide li { margin-bottom:3px; }
 .vg-close { float:right; background:none; border:none; color:var(--paper-dark); cursor:pointer; font-size:1rem; }
 
+/* MY BOOK FIELD PLACEHOLDER */
+#mybook-field:empty:before {
+  content: attr(data-placeholder);
+  color: rgba(200,144,42,0.25);
+  font-style: italic;
+  pointer-events: none;
+}
+
+/* MY BOOK FIELD PLACEHOLDER */
+#mybook-field:empty:before { content:attr(data-placeholder); color:rgba(200,144,42,0.25); font-style:italic; pointer-events:none; }
+
 /* TOAST */
 .toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px); background:#1c1408; border:1px solid rgba(200,144,42,0.35); color:var(--paper); padding:10px 22px; border-radius:5px; font-size:0.88rem; box-shadow:0 3px 16px rgba(0,0,0,0.5); opacity:0; transition:all 0.25s; z-index:9000; white-space:nowrap; pointer-events:none; }
 .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
@@ -1157,6 +1168,58 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
   <div class="ghost-stack" id="ghost-stack"></div>
 </div>
 
+<!-- MY BOOK VIEW -->
+<div id="mybook-view" class="view">
+  <div style="padding:36px 36px 120px; overflow-y:auto; height:100%; background:var(--bg);">
+    <div style="max-width:680px; margin:0 auto;">
+      <div style="margin-bottom:24px; display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <h1 style="font-family:'Playfair Display',serif; font-size:1.9rem; color:var(--paper); font-weight:400;">My <em style="color:var(--amber-light);font-style:italic">Book</em></h1>
+          <div style="font-size:0.88rem; color:var(--paper-dark); font-style:italic; margin-top:4px;">Type or paste text — or paste an image to transcribe it</div>
+        </div>
+        <button onclick="clearMyBook()" style="background:transparent; border:1px solid rgba(200,144,42,0.2); color:rgba(200,144,42,0.5); font-family:'Crimson Pro',serif; font-size:0.82rem; padding:5px 12px; border-radius:3px; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(200,144,42,0.5)';this.style.color='var(--amber-light)'" onmouseout="this.style.borderColor='rgba(200,144,42,0.2)';this.style.color='rgba(200,144,42,0.5)'">Clear</button>
+      </div>
+
+      <!-- Status bar -->
+      <div id="mybook-status" style="font-size:0.78rem; color:rgba(200,144,42,0.45); font-style:italic; min-height:18px; margin-bottom:10px;"></div>
+
+      <!-- The single unified field -->
+      <div id="mybook-field" contenteditable="true"
+        style="min-height:420px; background:rgba(200,144,42,0.03); border:1px solid rgba(200,144,42,0.18); border-radius:6px; padding:28px 32px; font-family:'Crimson Pro',serif; font-size:1.12rem; line-height:1.85; color:#e5dcc5; outline:none; transition:border-color 0.2s; cursor:text; white-space:pre-wrap; word-break:break-word;"
+        onfocus="this.style.borderColor='rgba(200,144,42,0.4)'"
+        onblur="this.style.borderColor='rgba(200,144,42,0.18)'"
+        oninput="myBookChanged()"
+        onpaste="handleMyBookPaste(event)"
+        data-placeholder="Start typing, or paste an image…"
+      ></div>
+    </div>
+  </div>
+</div>
+
+<!-- MY BOOK VIEW -->
+<div id="mybook-view" class="view">
+  <div style="padding:36px 36px 120px; overflow-y:auto; height:100%; background:var(--bg);">
+    <div style="max-width:680px; margin:0 auto;">
+      <div style="margin-bottom:24px; display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <h1 style="font-family:'Playfair Display',serif; font-size:1.9rem; color:var(--paper); font-weight:400;">My <em style="color:var(--amber-light);font-style:italic">Book</em></h1>
+          <div style="font-size:0.88rem; color:var(--paper-dark); font-style:italic; margin-top:4px;">Type or paste text — or paste an image to transcribe it</div>
+        </div>
+        <button onclick="clearMyBook()" style="background:transparent; border:1px solid rgba(200,144,42,0.2); color:rgba(200,144,42,0.5); font-family:'Crimson Pro',serif; font-size:0.82rem; padding:5px 12px; border-radius:3px; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(200,144,42,0.5)';this.style.color='var(--amber-light)'" onmouseout="this.style.borderColor='rgba(200,144,42,0.2)';this.style.color='rgba(200,144,42,0.5)'">Clear</button>
+      </div>
+      <div id="mybook-status" style="font-size:0.78rem; color:rgba(200,144,42,0.45); font-style:italic; min-height:18px; margin-bottom:10px;"></div>
+      <div id="mybook-field" contenteditable="true"
+        style="min-height:420px; background:rgba(200,144,42,0.03); border:1px solid rgba(200,144,42,0.18); border-radius:6px; padding:28px 32px; font-family:'Crimson Pro',serif; font-size:1.12rem; line-height:1.85; color:#e5dcc5; outline:none; transition:border-color 0.2s; cursor:text; white-space:pre-wrap; word-break:break-word;"
+        onfocus="this.style.borderColor='rgba(200,144,42,0.4)'"
+        onblur="this.style.borderColor='rgba(200,144,42,0.18)'"
+        oninput="myBookChanged()"
+        onpaste="handleMyBookPaste(event)"
+        data-placeholder="Start typing, or paste an image…"
+      ></div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast & Loading -->
 <div class="toast" id="toast"></div>
 <div class="loading" id="loading"><div class="spin"></div><div class="loading-msg" id="loading-msg">Loading…</div></div>
@@ -1441,7 +1504,7 @@ function restoreVolPrefs() {
 // ═══════════════════════════════════════════
 // VIEWS
 // ═══════════════════════════════════════════
-const ALL_VIEWS = ['library-view','settings-view','reader-view','bookshelf-view'];
+const ALL_VIEWS = ['library-view','settings-view','reader-view','bookshelf-view','mybook-view'];
 function hideAllViews(){ ALL_VIEWS.forEach(v=>{ const el=document.getElementById(v); if(el) el.classList.remove('active'); }); }
 
 function showLibraryView() {
@@ -1465,6 +1528,40 @@ function showBookshelfView() {
   document.getElementById('dock').classList.remove('visible');
   renderBookshelf();
 }
+function showMyBookView() {
+  document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
+  hideAllViews();
+  document.getElementById('mybook-view').classList.add('active');
+  document.getElementById('back-btn').style.display='block';
+  document.getElementById('bookshelf-btn').style.display='none';
+  document.getElementById('settings-btn').style.display='none';
+  document.body.classList.add('in-library');
+  document.getElementById('dock').classList.remove('visible');
+  loadMyBookIntoReader();
+}
+
+function showMyBookView() {
+  document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
+  hideAllViews();
+  document.getElementById('mybook-view').classList.add('active');
+  document.getElementById('back-btn').style.display='block';
+  document.getElementById('bookshelf-btn').style.display='none';
+  document.getElementById('settings-btn').style.display='none';
+  document.body.classList.add('in-library');
+  loadMyBookIntoReader();
+}
+
+function showMyBookView() {
+  document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
+  hideAllViews();
+  document.getElementById('mybook-view').classList.add('active');
+  document.getElementById('back-btn').style.display='block';
+  document.getElementById('bookshelf-btn').style.display='none';
+  document.getElementById('settings-btn').style.display='none';
+  document.body.classList.add('in-library');
+  loadMyBookIntoReader();
+}
+
 function showSettingsView() {
   document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
   hideAllViews();
@@ -1795,7 +1892,14 @@ function renderLibrary(){
   const row=document.getElementById('books-row');
   const empty=document.getElementById('empty-shelf');
   row.querySelectorAll('.book-spine').forEach(e=>e.remove());
-  if(!books.length){empty.style.display='flex';document.getElementById('lib-count').textContent='No books yet';return;}
+  // Always render "My Book" spine first
+  const mySpine=document.createElement('div');
+  mySpine.className='book-spine';
+  mySpine.style.cssText='background:linear-gradient(160deg,#2a1f0e,#3a2c15,#1a1208);color:#d4b87a;';
+  mySpine.innerHTML=`<div class="book-spine-inner"><div class="spine-line"></div><div class="spine-title" style="opacity:0.9">My Book</div><div class="spine-author" style="opacity:0.5">—</div><div class="spine-line"></div></div>`;
+  mySpine.addEventListener('click',()=>openMyBook());
+  row.appendChild(mySpine);
+  if(!books.length){empty.style.display='none';document.getElementById('lib-count').textContent='No books yet';return;}
   empty.style.display='none';
   document.getElementById('lib-count').textContent=`${books.length} book${books.length!==1?'s':''} in your collection`;
   books.forEach(b=>{
@@ -2147,6 +2251,16 @@ function syncScrollbar(){
 let _progressSaveTimer=null;
 function updateProgress(){
   if(!book) return;
+  // Recalculate sentencesBefore using actual cache where available, estimates elsewhere
+  const totalChars=book.chapters.reduce((a,ch)=>a+(ch.text?.length||0),0);
+  const avgCharPerSent = totalChars > 0 ? totalChars / (totalSentences||1) : 80;
+  let acc=0;
+  book.chapters.forEach((ch,i)=>{
+    sentencesBefore[i]=acc;
+    if(sentenceCache[i]?.length) acc+=sentenceCache[i].length;
+    else acc+=Math.round((ch.text?.length||0)/avgCharPerSent);
+  });
+  totalSentences=acc;
   const before=sentencesBefore[chIdx]||0;
   const pct=totalSentences>0?Math.round((before+sIdx)/totalSentences*100):0;
   if(EL.progFill) EL.progFill.style.width=pct+'%';
@@ -2212,7 +2326,7 @@ function doAdvance(){
     if(wasPlaying){
       playing = true;
       updatePlayUI();
-      speak(sentenceTexts[0]||"");
+      setTimeout(()=>{ if(playing) speak(sentenceTexts[0]||""); }, 50);
     }
   } else {
     stopSpeech(); pauseYouTube(); toast('End of book reached');
@@ -2983,139 +3097,84 @@ function confirmDeleteSelected(){
   document.getElementById('modal-delete-msg').textContent=`Delete ${selectedForDelete.size} book${selectedForDelete.size!==1?'s':''}? This cannot be undone.`;
 }
 
+
+// ═══════════════════════════════════════════
+// MY BOOK
+// ═══════════════════════════════════════════
+const MYBOOK_KEY = 'pl_mybook_text';
+
+function openMyBook(){ showMyBookView(); }
+
+function loadMyBookIntoReader(){
+  const saved = localStorage.getItem(MYBOOK_KEY) || '';
+  const field = document.getElementById('mybook-field');
+  if(field) field.textContent = saved;
+  if(saved.trim()) syncMyBookToReader();
+}
+
+function myBookChanged(){
+  const field = document.getElementById('mybook-field');
+  if(!field) return;
+  localStorage.setItem(MYBOOK_KEY, field.textContent || '');
+  syncMyBookToReader();
+}
+
+function syncMyBookToReader(){
+  const field = document.getElementById('mybook-field');
+  if(!field) return;
+  const text = (field.textContent || '').trim();
+  sentences = text ? splitHtml(text) : [];
+  sentenceTexts = sentences.map(s=>{ const t=document.createElement('div'); t.innerHTML=s; return t.textContent.trim(); });
+  sIdx = Math.min(sIdx, Math.max(0, sentences.length-1));
+}
+
+async function handleMyBookPaste(e){
+  const items = e.clipboardData?.items;
+  if(!items) return;
+  for(const item of items){
+    if(item.type.startsWith('image/')){
+      e.preventDefault();
+      setMyBookStatus('Transcribing image...');
+      try {
+        const file = item.getAsFile();
+        const b64 = await fileToBase64(file);
+        const response = await fetch(WORKER_URL, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ prompt:'Transcribe all text from this image exactly as it appears. Output only the transcribed text, no commentary.', image:{ data:b64, mimeType:item.type } })
+        });
+        const data = await response.json();
+        const transcribed = (data.text||'').trim();
+        if(transcribed){
+          const field = document.getElementById('mybook-field');
+          const existing = (field.textContent||'').trim();
+          field.textContent = existing ? existing + '\n\n' + transcribed : transcribed;
+          localStorage.setItem(MYBOOK_KEY, field.textContent);
+          syncMyBookToReader();
+          setMyBookStatus('Transcribed — press play to read');
+        } else { setMyBookStatus('Could not read image'); }
+      } catch(err){ setMyBookStatus('Error: ' + err.message); }
+      return;
+    }
+  }
+  setTimeout(()=>{ myBookChanged(); setMyBookStatus(''); }, 0);
+}
+
+function fileToBase64(file){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+}
+
+function setMyBookStatus(msg){ const el=document.getElementById('mybook-status'); if(el) el.textContent=msg; }
+
+function clearMyBook(){
+  const field=document.getElementById('mybook-field');
+  if(field) field.textContent='';
+  localStorage.removeItem(MYBOOK_KEY);
+  sentences=[]; sentenceTexts=[];
+  setMyBookStatus('Cleared');
+  setTimeout(()=>setMyBookStatus(''),2000);
+}
+
 function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.toggle('show'); }
-
-// ═══════════════════════════════════════════
-// EVENT LISTENERS
-// ═══════════════════════════════════════════
-// INIT — all event listeners inside DOMContentLoaded
-// ═══════════════════════════════════════════
-// ── DOM element cache — avoid repeated getElementById in hot paths ──
-const EL = {};
-function cacheElements(){
-  EL.progFill    = document.getElementById('prog-fill');
-  EL.progPct     = document.getElementById('prog-pct');
-  EL.progChapter = document.getElementById('prog-chapter');
-  EL.readerContent = document.getElementById('reader-content');
-  EL.readerScroll  = document.getElementById('reader-scroll');
-  EL.scrollThumb   = document.getElementById('scrollbar-thumb');
-  EL.playIco  = document.getElementById('ico-play');
-  EL.pauseIco = document.getElementById('ico-pause');
-  EL.speedLbl = document.getElementById('speed-lbl');
-  EL.pitchLbl = document.getElementById('pitch-lbl');
-}
-
-async function init(){
-  // Database + data
-  cacheElements();
-  attachClickToJump();
-  // Restore global rate/pitch preferences
-  const _savedRate = parseFloat(localStorage.getItem('pl_rate')||'1.0');
-  const _savedPitch = parseFloat(localStorage.getItem('pl_pitch')||'1.0');
-  if(!isNaN(_savedRate))  rate  = _savedRate;
-  if(!isNaN(_savedPitch)) pitch = _savedPitch;
-  // Update display labels now that elements are cached
-  updateSpeedLabel();
-  updatePitchLabel();
-  await openDB();
-  books = await dbAll('books');
-  books.sort((a,b) => b.addedAt - a.addedAt);
-  renderLibrary();
-  // Restore open book from before page refresh
-  const _lastOpenBook = sessionStorage.getItem('pl_open_book');
-  if(_lastOpenBook && books.find(b=>b.id===_lastOpenBook)){
-    openBook(_lastOpenBook);
-  }
-  await loadAmbientSounds();
-  restoreVolPrefs();
-  loadYTApi();
-  setTimeout(loadVoices, 300);
-  restoreAppearancePrefs();
-  syncVolSliders();
-  restoreBrightness();
-  updateBookmarkBtn();
-
-  // ── File upload ──────────────────────────────────────────────────────
-  const fileInput = document.getElementById('file-input');
-  if(fileInput){
-    fileInput.addEventListener('change', e => {
-      if(e.target.files.length) handleFiles(e.target.files);
-      e.target.value = '';
-    });
-  }
-
-  const uz = document.getElementById('upload-zone');
-  if(uz){
-    uz.addEventListener('click', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      if(fileInput){ fileInput.value=''; fileInput.click(); }
-    });
-    uz.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over'); });
-    uz.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over'); });
-    uz.addEventListener('dragleave', e => { e.stopPropagation(); uz.classList.remove('drag-over'); });
-    uz.addEventListener('drop', e => {
-      e.preventDefault(); e.stopPropagation();
-      uz.classList.remove('drag-over');
-      if(e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
-    });
-  }
-
-  // Also allow dropping anywhere on library view
-  const lv = document.getElementById('library-view');
-  if(lv){
-    lv.addEventListener('dragenter', e => { e.preventDefault(); if(uz) uz.classList.add('drag-over'); });
-    lv.addEventListener('dragover',  e => { e.preventDefault(); if(uz) uz.classList.add('drag-over'); });
-    lv.addEventListener('dragleave', e => { if(!lv.contains(e.relatedTarget) && uz) uz.classList.remove('drag-over'); });
-    lv.addEventListener('drop', e => {
-      e.preventDefault();
-      if(uz) uz.classList.remove('drag-over');
-      if(e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
-    });
-  }
-
-  // Prevent browser opening file if dropped outside zone
-  window.addEventListener('dragover', e => e.preventDefault());
-  window.addEventListener('drop',     e => e.preventDefault());
-
-  // ── Reader controls ──────────────────────────────────────────────────
-  const chapterSel = document.getElementById('chapter-select');
-  if(chapterSel) chapterSel.addEventListener('change', e => loadChapter(parseInt(e.target.value), 0));
-
-  const readerScroll = document.getElementById('reader-scroll');
-  if(readerScroll) readerScroll.addEventListener('scroll', syncScrollbar);
-
-  const searchInput = document.getElementById('search-input');
-  if(searchInput){
-    searchInput.addEventListener('input', e => {
-      const q = e.target.value;
-      document.getElementById('search-x').classList.toggle('show', q.length > 0);
-      clearTimeout(searchTimer);
-      searchTimer = setTimeout(() => doSearch(q), 180);
-    });
-  }
-
-  const searchX = document.getElementById('search-x');
-  if(searchX){
-    searchX.addEventListener('click', () => {
-      document.getElementById('search-input').value = '';
-      searchX.classList.remove('show');
-      doSearch('');
-    });
-  }
-
-  window.addEventListener('resize', () => { if(book) updateScrollbar(); });
-
-  document.addEventListener('keydown', e => {
-    if(e.target.tagName==='INPUT' || e.target.tagName==='SELECT' || e.target.tagName==='TEXTAREA') return;
-    if(!book) return;
-    if(e.code==='Space')      { e.preventDefault(); togglePlay(); }
-    if(e.code==='ArrowRight') nextSentence();
-    if(e.code==='ArrowLeft')  prevSentence();
-  });
-
-  window.speechSynthesis.onvoiceschanged = loadVoices;
-}
 
 init();
 </script>
