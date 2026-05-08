@@ -1472,6 +1472,7 @@ const ALL_VIEWS = ['library-view','settings-view','reader-view','bookshelf-view'
 function hideAllViews(){ ALL_VIEWS.forEach(v=>{ const el=document.getElementById(v); if(el) el.classList.remove('active'); }); }
 
 function showLibraryView() {
+  document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
   hideAllViews();
   document.getElementById('library-view').classList.add('active');
   document.getElementById('back-btn').style.display='none';
@@ -1481,6 +1482,7 @@ function showLibraryView() {
   document.body.classList.add('hide-dock');
 }
 function showBookshelfView() {
+  document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
   hideAllViews();
   document.getElementById('bookshelf-view').classList.add('active');
   document.getElementById('back-btn').style.display='block';
@@ -1502,6 +1504,7 @@ function showMyBookView() {
   loadMyBookIntoReader();
 }
 function showSettingsView() {
+  document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
   hideAllViews();
   document.getElementById('settings-view').classList.add('active');
   document.getElementById('back-btn').style.display='block';
