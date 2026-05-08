@@ -1493,17 +1493,15 @@ function showMyBookView() {
   document.getElementById('bookshelf-btn').style.display='none';
   document.getElementById('settings-btn').style.display='none';
   document.body.classList.add('in-library');
-  document.getElementById('dock').classList.remove('visible');
-  // dock stays visible in My Book
+  document.body.classList.remove('hide-dock');
+  loadMyBookIntoReader();
 }
-
 function showSettingsView() {
   hideAllViews();
   document.getElementById('settings-view').classList.add('active');
   document.getElementById('back-btn').style.display='block';
   document.getElementById('bookshelf-btn').style.display='none';
   document.getElementById('settings-btn').style.display='none';
-  document.body.classList.add('in-library');
   document.body.classList.add('in-library');
   document.body.classList.add('hide-dock');
 }
@@ -3052,7 +3050,7 @@ function loadMyBookIntoReader(){
   // Attach paste handler via JS (more reliable than onpaste attribute on contenteditable)
   if(!field._pasteAttached){
     field._pasteAttached = true;
-    field.addEventListener('paste', handleMyBookPaste);
+    field.addEventListener('paste', e => handleMyBookPaste(e));
   }
 }
 
@@ -3072,35 +3070,42 @@ function syncMyBookToReader(){
   sIdx = Math.min(sIdx, Math.max(0, sentences.length-1));
 }
 
-async function handleMyBookPaste(e){
-  const items = e.clipboardData?.items;
-  if(!items) return;
-  for(const item of items){
-    if(item.type.startsWith('image/')){
-      e.preventDefault();
-      setMyBookStatus('Transcribing image...');
+function handleMyBookPaste(e){
+  const items = Array.from(e.clipboardData?.items || []);
+  const imageItem = items.find(i => i.kind === 'file' && i.type.startsWith('image/'));
+  if(imageItem){
+    e.preventDefault();
+    setMyBookStatus('Transcribing...');
+    const file = imageItem.getAsFile();
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const b64 = reader.result.split(',')[1];
+      const mime = imageItem.type || 'image/png';
       try {
-        const file = item.getAsFile();
-        const b64 = await fileToBase64(file);
-        const response = await fetch(WORKER_URL, {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ prompt:'Transcribe all text from this image exactly as it appears. Output only the transcribed text, no commentary.', image:{ data:b64, mimeType:item.type } })
+        const res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            prompt: 'Transcribe all text from this image. Output only the transcribed text.',
+            image: { data: b64, mimeType: mime }
+          })
         });
-        const data = await response.json();
-        const transcribed = (data.text||'').trim();
-        if(transcribed){
+        const data = await res.json();
+        const text = (data.text || '').trim();
+        if(text){
           const field = document.getElementById('mybook-field');
-          const existing = (field.textContent||'').trim();
-          field.textContent = existing ? existing + '\n\n' + transcribed : transcribed;
+          const existing = (field.textContent || '').trim();
+          field.textContent = existing ? existing + '\n\n' + text : text;
           localStorage.setItem(MYBOOK_KEY, field.textContent);
           syncMyBookToReader();
-          setMyBookStatus('Transcribed — press play to read');
-        } else { setMyBookStatus('Could not read image'); }
+          setMyBookStatus('Done — press play to read');
+        } else { setMyBookStatus('No text found in image'); }
       } catch(err){ setMyBookStatus('Error: ' + err.message); }
-      return;
-    }
+    };
+    reader.readAsDataURL(file);
+  } else {
+    setTimeout(()=>{ myBookChanged(); }, 0);
   }
-  setTimeout(()=>{ myBookChanged(); setMyBookStatus(''); }, 0);
 }
 
 function fileToBase64(file){
