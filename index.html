@@ -677,6 +677,11 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
 .bookmark-modal-btns { display:flex; gap:8px; }
 .bookmark-modal-btns .btn { flex:1; text-align:center; }
 </style>
+<script type="module">
+import { KokoroTTS } from "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.mjs";
+window._KokoroTTS = KokoroTTS;
+window.dispatchEvent(new Event('kokoro-ready'));
+</script>
 </head>
 <body class="in-library hide-dock">
 
@@ -823,6 +828,26 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
       <span class="vol-label">🔊 Voice Vol</span>
       <input type="range" class="vol-slider" id="voice-vol" min="0" max="100" value="100" oninput="setVoiceVolume(this.value)">
       <span class="vol-value" id="voice-vol-val">100%</span>
+    </div>
+  </div>
+
+  <!-- KOKORO TTS -->
+  <div class="settings-section">
+    <div class="settings-section-title">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#e8b84b" stroke-width="1.4"><path d="M8 1v14M1 8h14" stroke-linecap="round" opacity="0.4"/><circle cx="8" cy="8" r="6"/><path d="M5 8c0-1.7 1.3-3 3-3s3 1.3 3 3" stroke-linecap="round"/></svg>
+      Kokoro AI Voice
+    </div>
+    <div style="font-size:0.82rem; color:var(--paper-dark); margin-bottom:14px; line-height:1.6;">
+      High-quality AI voices that run entirely in your browser. Downloads ~160MB on first use, then works offline.
+    </div>
+    <div id="kokoro-status" style="font-size:0.82rem; color:rgba(200,144,42,0.6); font-style:italic; margin-bottom:12px; min-height:18px;"></div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn-add" id="kokoro-load-btn" onclick="loadKokoro()">Download &amp; Enable Kokoro</button>
+      <button class="btn-add" id="kokoro-clear-btn" onclick="clearKokoroCache()" style="display:none; border-color:rgba(200,80,80,0.3); color:#ff9090;">Clear Cache</button>
+    </div>
+    <div style="margin-top:14px;" id="kokoro-voice-wrap" style="display:none;">
+      <div class="form-label" style="margin-bottom:6px;">Kokoro Voice</div>
+      <select id="kokoro-voice-select" class="form-input" style="max-width:280px;" onchange="setKokoroVoice(this.value)"></select>
     </div>
   </div>
 
@@ -2232,8 +2257,13 @@ function preprocessForTTS(text){
 }
 
 function speak(text){
-  window.speechSynthesis.cancel();
   if(!text) return;
+  if(kokoroTTS){
+    window.speechSynthesis.cancel();
+    speakWithKokoro(text);
+    return;
+  }
+  window.speechSynthesis.cancel();
   text = preprocessForTTS(text);
   utt=new SpeechSynthesisUtterance(text);
   utt.rate=rate; utt.pitch=pitch; utt.volume=voiceVol;
@@ -2242,7 +2272,11 @@ function speak(text){
   utt.onerror=e=>{ if(e.error!=='interrupted'&&playing) doAdvance(); };
   window.speechSynthesis.speak(utt);
 }
-function stopSpeech(){ window.speechSynthesis.cancel(); playing=false; updatePlayUI(); }
+function stopSpeech(){
+  window.speechSynthesis.cancel();
+  if(_kokoroAudio){ try{ _kokoroAudio.stop(); }catch(e){} _kokoroAudio=null; }
+  playing=false; updatePlayUI();
+}
 function togglePlay(){
   if(window.speechSynthesis.paused){
     window.speechSynthesis.resume(); playing=true; resumeYouTube();
@@ -3132,27 +3166,116 @@ function clearMyBook(){
   setTimeout(()=>setMyBookStatus(''),2000);
 }
 
-function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.toggle('show'); }
 
 // ═══════════════════════════════════════════
-// EVENT LISTENERS
+// KOKORO TTS
 // ═══════════════════════════════════════════
-// INIT — all event listeners inside DOMContentLoaded
-// ═══════════════════════════════════════════
-// ── DOM element cache — avoid repeated getElementById in hot paths ──
-const EL = {};
-function cacheElements(){
-  EL.progFill    = document.getElementById('prog-fill');
-  EL.progPct     = document.getElementById('prog-pct');
-  EL.progChapter = document.getElementById('prog-chapter');
-  EL.readerContent = document.getElementById('reader-content');
-  EL.readerScroll  = document.getElementById('reader-scroll');
-  EL.scrollThumb   = document.getElementById('scrollbar-thumb');
-  EL.playIco  = document.getElementById('ico-play');
-  EL.pauseIco = document.getElementById('ico-pause');
-  EL.speedLbl = document.getElementById('speed-lbl');
-  EL.pitchLbl = document.getElementById('pitch-lbl');
+let kokoroTTS = null;
+let kokoroVoice = localStorage.getItem('pl_kokoro_voice') || 'af_heart';
+let kokoroLoading = false;
+let _kokoroAudio = null;
+let _kokoroCtx = null;
+
+const KOKORO_VOICES = [
+  {id:'af_heart',label:'Heart (US Female)'},{id:'af_alloy',label:'Alloy (US Female)'},
+  {id:'af_aoede',label:'Aoede (US Female)'},{id:'af_bella',label:'Bella (US Female)'},
+  {id:'af_jessica',label:'Jessica (US Female)'},{id:'af_nicole',label:'Nicole (US Female)'},
+  {id:'af_nova',label:'Nova (US Female)'},{id:'af_sarah',label:'Sarah (US Female)'},
+  {id:'af_sky',label:'Sky (US Female)'},{id:'am_adam',label:'Adam (US Male)'},
+  {id:'am_echo',label:'Echo (US Male)'},{id:'am_eric',label:'Eric (US Male)'},
+  {id:'am_fenrir',label:'Fenrir (US Male)'},{id:'am_liam',label:'Liam (US Male)'},
+  {id:'am_michael',label:'Michael (US Male)'},{id:'am_onyx',label:'Onyx (US Male)'},
+  {id:'am_puck',label:'Puck (US Male)'},{id:'bf_emma',label:'Emma (UK Female)'},
+  {id:'bf_isabella',label:'Isabella (UK Female)'},{id:'bm_george',label:'George (UK Male)'},
+  {id:'bm_lewis',label:'Lewis (UK Male)'},
+];
+
+function setKokoroStatus(msg){ const el=document.getElementById('kokoro-status'); if(el) el.textContent=msg; }
+
+function populateKokoroVoices(){
+  const sel=document.getElementById('kokoro-voice-select');
+  if(!sel) return;
+  sel.innerHTML=KOKORO_VOICES.map(v=>`<option value="${v.id}"${v.id===kokoroVoice?' selected':''}>${v.label}</option>`).join('');
+  const wrap=document.getElementById('kokoro-voice-wrap');
+  if(wrap) wrap.style.display='block';
 }
+
+function setKokoroVoice(v){ kokoroVoice=v; localStorage.setItem('pl_kokoro_voice',v); }
+
+async function loadKokoro(){
+  if(kokoroLoading||kokoroTTS) return;
+  kokoroLoading=true;
+  const btn=document.getElementById('kokoro-load-btn');
+  if(btn) btn.disabled=true;
+  setKokoroStatus('Downloading Kokoro (~160MB)...');
+  try {
+    if(!window._KokoroTTS){
+      await new Promise(res=>window.addEventListener('kokoro-ready',res,{once:true}));
+    }
+    setKokoroStatus('Loading model...');
+    kokoroTTS=await window._KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});
+    setKokoroStatus('Kokoro ready ✓');
+    if(btn){btn.textContent='Kokoro Active ✓';btn.disabled=true;}
+    const clearBtn=document.getElementById('kokoro-clear-btn');
+    if(clearBtn) clearBtn.style.display='block';
+    populateKokoroVoices();
+    localStorage.setItem('pl_kokoro_enabled','1');
+    toast('Kokoro loaded — enjoy the upgrade!');
+  } catch(e){
+    setKokoroStatus('Failed: '+e.message);
+    if(btn) btn.disabled=false;
+    kokoroLoading=false;
+  }
+}
+
+async function clearKokoroCache(){
+  try {
+    const keys=await caches.keys();
+    for(const key of keys) await caches.delete(key);
+    kokoroTTS=null; kokoroLoading=false;
+    localStorage.removeItem('pl_kokoro_enabled');
+    const btn=document.getElementById('kokoro-load-btn');
+    if(btn){btn.textContent='Download & Enable Kokoro';btn.disabled=false;}
+    const clearBtn=document.getElementById('kokoro-clear-btn');
+    if(clearBtn) clearBtn.style.display='none';
+    const wrap=document.getElementById('kokoro-voice-wrap');
+    if(wrap) wrap.style.display='none';
+    setKokoroStatus('Cache cleared');
+    toast('Kokoro cache cleared');
+  } catch(e){ toast('Error: '+e.message); }
+}
+
+async function speakWithKokoro(text){
+  if(!kokoroTTS||!text) return;
+  try {
+    if(_kokoroAudio){try{_kokoroAudio.stop();}catch(e){} _kokoroAudio=null;}
+    const audio=await kokoroTTS.generate(preprocessForTTS(text),{voice:kokoroVoice});
+    if(!_kokoroCtx||_kokoroCtx.state==='closed'){
+      _kokoroCtx=new (window.AudioContext||window.webkitAudioContext)();
+    }
+    if(_kokoroCtx.state==='suspended') await _kokoroCtx.resume();
+    const buffer=_kokoroCtx.createBuffer(1,audio.audio.length,audio.sampling_rate);
+    buffer.copyToChannel(audio.audio,0);
+    const source=_kokoroCtx.createBufferSource();
+    source.buffer=buffer;
+    source.playbackRate.value=rate;
+    source.connect(_kokoroCtx.destination);
+    _kokoroAudio=source;
+    source.onended=()=>{ _kokoroAudio=null; if(playing) doAdvance(); };
+    source.start();
+  } catch(e){
+    console.error('Kokoro error:',e);
+    // fallback to browser TTS
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.rate=rate; u.pitch=pitch; u.volume=voiceVol;
+    if(selVoice) u.voice=selVoice;
+    u.onend=()=>{ if(playing) doAdvance(); };
+    window.speechSynthesis.speak(u);
+  }
+}
+
+function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.toggle('show'); }
 
 async function init(){
   // Database + data
@@ -3170,9 +3293,11 @@ async function init(){
   books = await dbAll('books');
   books.sort((a,b) => b.addedAt - a.addedAt);
   renderLibrary();
-  const _lastOpenBook = sessionStorage.getItem('pl_open_book');
-  if(_lastOpenBook && books.find(b=>b.id===_lastOpenBook)) openBook(_lastOpenBook);
   // Restore open book from before page refresh
+  const _lastOpenBook = sessionStorage.getItem('pl_open_book');
+  if(_lastOpenBook && books.find(b=>b.id===_lastOpenBook)){
+    openBook(_lastOpenBook);
+  }
   await loadAmbientSounds();
   restoreVolPrefs();
   loadYTApi();
