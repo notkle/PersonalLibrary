@@ -805,9 +805,12 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
   <!-- VOICE -->
   <div class="settings-section">
     <div class="settings-section-title">Voice</div>
-    <div class="vol-row">
-      <span class="vol-label">Voice</span>
-      <select class="voice-select" id="voice-select" onchange="voiceChanged()" style="flex:1;max-width:none;background:#2a1e0e;border:1px solid rgba(200,144,42,0.22);color:var(--paper);font-family:Crimson Pro,serif;font-size:0.9rem;padding:5px 8px;border-radius:3px"></select>
+    <div class="vol-row" style="align-items:flex-start; gap:8px;">
+      <input type="radio" id="tts-radio-browser" name="tts-mode" value="browser" checked onchange="setTtsMode('browser')" style="margin-top:6px;accent-color:var(--amber);">
+      <div id="browser-voice-wrap" style="flex:1;">
+        <div style="font-size:0.82rem;color:var(--paper-dark);margin-bottom:5px;">Browser Voice</div>
+        <select class="voice-select" id="voice-select" onchange="voiceChanged()" style="width:100%;background:#2a1e0e;border:1px solid rgba(200,144,42,0.22);color:var(--paper);font-family:Crimson Pro,serif;font-size:0.9rem;padding:5px 8px;border-radius:3px"></select>
+      </div>
     </div>
     <div class="vol-row" style="margin-top:12px">
       <span class="vol-label">Speed</span>
@@ -847,8 +850,13 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
       <button class="btn-add" id="kokoro-clear-btn" onclick="clearKokoroCache()" style="display:none; border-color:rgba(200,80,80,0.3); color:#ff9090;">Clear Cache</button>
     </div>
     <div id="kokoro-voice-wrap" style="margin-top:14px; display:none;">
-      <div class="form-label" style="margin-bottom:6px;">Voice</div>
-      <select id="kokoro-voice-select" class="form-input" style="max-width:280px;" onchange="setKokoroVoice(this.value)"></select>
+      <div style="display:flex;align-items:flex-start;gap:8px;">
+        <input type="radio" id="tts-radio-kokoro" name="tts-mode" value="kokoro" onchange="setTtsMode('kokoro')" style="margin-top:4px;accent-color:var(--amber);">
+        <div style="flex:1;">
+          <div class="form-label" style="margin-bottom:6px;">Kokoro Voice</div>
+          <select id="kokoro-voice-select" class="voice-select" style="width:100%;background:#2a1e0e;" onchange="setKokoroVoice(this.value)"></select>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -991,6 +999,32 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
           <span class="rsp-label">🎵 Ambient</span>
           <input type="range" class="rsp-slider" id="p-ambient-vol" min="0" max="100" value="40" oninput="setAmbientVolume(this.value)">
           <span class="rsp-val" id="p-ambient-vol-val">40%</span>
+        </div>
+      </div>
+
+      <!-- KOKORO in sidebar -->
+      <div class="rsp-section" id="rsp-kokoro-section">
+        <div class="rsp-section-title">Kokoro AI Voice</div>
+        <div id="rsp-kokoro-status" style="font-size:0.78rem;color:rgba(200,144,42,0.5);font-style:italic;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="rsp-add-btn" id="rsp-kokoro-load-btn" onclick="loadKokoro();syncRspKokoro()" style="padding:6px 10px;">Enable Kokoro</button>
+          <button class="rsp-add-btn" id="rsp-kokoro-clear-btn" onclick="clearKokoroCache();syncRspKokoro()" style="display:none;border-color:rgba(200,80,80,0.3);color:#ff9090;padding:6px 10px;">Clear Cache</button>
+        </div>
+        <div id="rsp-kokoro-voice-wrap" style="margin-top:10px;display:none;">
+          <select class="voice-select" style="width:100%;background:#2a1e0e;" onchange="setKokoroVoice(this.value)" id="rsp-kokoro-voice-select"></select>
+        </div>
+      </div>
+
+      <!-- KOKORO in sidebar -->
+      <div class="rsp-section">
+        <div class="rsp-section-title">Kokoro AI Voice</div>
+        <div id="rsp-kokoro-status" style="font-size:0.78rem;color:rgba(200,144,42,0.5);font-style:italic;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="rsp-add-btn" id="rsp-kokoro-load-btn" onclick="loadKokoro()" style="padding:6px 10px;">Enable Kokoro</button>
+          <button class="rsp-add-btn" id="rsp-kokoro-clear-btn" onclick="clearKokoroCache()" style="display:none;border-color:rgba(200,80,80,0.3);color:#ff9090;padding:6px 10px;">Clear</button>
+        </div>
+        <div id="rsp-kokoro-voice-wrap" style="margin-top:10px;display:none;">
+          <select class="voice-select" style="width:100%;background:#2a1e0e;" onchange="setKokoroVoice(this.value)" id="rsp-kokoro-voice-select"></select>
         </div>
       </div>
 
@@ -2261,7 +2295,7 @@ function preprocessForTTS(text){
 
 function speak(text){
   if(!text) return;
-  if(kokoroTTS){ window.speechSynthesis.cancel(); speakWithKokoro(text); return; }
+  if(ttsMode==='kokoro'&&kokoroTTS){ window.speechSynthesis.cancel(); speakWithKokoro(text); return; }
   window.speechSynthesis.cancel();
   text=preprocessForTTS(text);
   utt=new SpeechSynthesisUtterance(text);
@@ -2582,6 +2616,8 @@ const THEMES = {
 
 function toggleReaderSettings(){
   syncKokoroUI();
+  syncRspKokoro();
+  syncRspKokoro();
   const overlay = document.getElementById('reader-settings-overlay');
   const btn = document.getElementById('dock-settings-btn') || document.getElementById('topbar-settings-btn');
   const show = overlay.classList.toggle('show');
@@ -2972,15 +3008,102 @@ function clearMyBook(){ const field=document.getElementById('mybook-field');if(f
 
 // KOKORO TTS
 let kokoroTTS=null,kokoroVoice=localStorage.getItem('pl_kokoro_voice')||'af_heart',kokoroLoading=false,_kokoroAudio=null,_kokoroCtx=null;
+let ttsMode=localStorage.getItem('pl_tts_mode')||'browser'; // 'browser' or 'kokoro'
 const KOKORO_VOICES=[{id:'af_heart',label:'Heart (US Female)'},{id:'af_alloy',label:'Alloy (US Female)'},{id:'af_aoede',label:'Aoede (US Female)'},{id:'af_bella',label:'Bella (US Female)'},{id:'af_jessica',label:'Jessica (US Female)'},{id:'af_nicole',label:'Nicole (US Female)'},{id:'af_nova',label:'Nova (US Female)'},{id:'af_sarah',label:'Sarah (US Female)'},{id:'af_sky',label:'Sky (US Female)'},{id:'am_adam',label:'Adam (US Male)'},{id:'am_echo',label:'Echo (US Male)'},{id:'am_eric',label:'Eric (US Male)'},{id:'am_fenrir',label:'Fenrir (US Male)'},{id:'am_liam',label:'Liam (US Male)'},{id:'am_michael',label:'Michael (US Male)'},{id:'am_onyx',label:'Onyx (US Male)'},{id:'am_puck',label:'Puck (US Male)'},{id:'bf_emma',label:'Emma (UK Female)'},{id:'bf_isabella',label:'Isabella (UK Female)'},{id:'bm_george',label:'George (UK Male)'},{id:'bm_lewis',label:'Lewis (UK Male)'}];
 function setKokoroStatus(msg){const el=document.getElementById('kokoro-status');if(el)el.textContent=msg;}
 function setKokoroProgress(pct,label){const wrap=document.getElementById('kokoro-progress-wrap'),bar=document.getElementById('kokoro-progress-bar'),txt=document.getElementById('kokoro-progress-text');if(wrap)wrap.style.display=pct<100?'block':'none';if(bar)bar.style.width=pct+'%';if(txt)txt.textContent=label||'';}
 function populateKokoroVoices(){const sel=document.getElementById('kokoro-voice-select');if(!sel)return;sel.innerHTML=KOKORO_VOICES.map(v=>`<option value="${v.id}"${v.id===kokoroVoice?' selected':''}>${v.label}</option>`).join('');const wrap=document.getElementById('kokoro-voice-wrap');if(wrap)wrap.style.display='block';}
-function setKokoroVoice(v){kokoroVoice=v;localStorage.setItem('pl_kokoro_voice',v);}
-function syncKokoroUI(){const was=localStorage.getItem('pl_kokoro_enabled');const cb=document.getElementById('kokoro-clear-btn'),lb=document.getElementById('kokoro-load-btn');if(cb)cb.style.display=was?'block':'none';if(kokoroTTS){if(lb){lb.textContent='Kokoro Active ✓';lb.disabled=true;}setKokoroStatus('Kokoro ready ✓');populateKokoroVoices();}else if(was){setKokoroStatus('Cached — click to reload');}}
-async function loadKokoro(){if(kokoroLoading||kokoroTTS)return;kokoroLoading=true;const btn=document.getElementById('kokoro-load-btn');if(btn)btn.disabled=true;setKokoroStatus('Loading library...');setKokoroProgress(0,'');try{if(!window._KokoroTTS){const mod=await import("https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm");window._KokoroTTS=mod.KokoroTTS;}setKokoroStatus('Downloading model (~160MB)...');let fp=0;const pi=setInterval(()=>{if(fp<85)fp+=Math.random()*3;setKokoroProgress(Math.min(fp,85),Math.round(Math.min(fp,85))+'%');},800);kokoroTTS=await window._KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});clearInterval(pi);setKokoroProgress(100,'100%');setTimeout(()=>setKokoroProgress(101,''),800);setKokoroStatus('Kokoro ready ✓');if(btn){btn.textContent='Kokoro Active ✓';btn.disabled=true;}const cb=document.getElementById('kokoro-clear-btn');if(cb)cb.style.display='block';populateKokoroVoices();localStorage.setItem('pl_kokoro_enabled','1');toast('Kokoro loaded!');}catch(e){setKokoroProgress(0,'');setKokoroStatus('Failed: '+e.message);if(btn)btn.disabled=false;kokoroLoading=false;}}
+function setKokoroVoice(v){kokoroVoice=v;localStorage.setItem('pl_kokoro_voice',v);
+  // sync all kokoro voice selects
+  document.querySelectorAll('#kokoro-voice-select,#rsp-kokoro-voice-select').forEach(s=>{if(s)s.value=v;});
+}
+
+function setTtsMode(mode){
+  if(mode==='kokoro'&&!kokoroTTS){ toast('Load Kokoro first'); return; }
+  ttsMode=mode;
+  localStorage.setItem('pl_tts_mode',mode);
+  updateTtsModeUI();
+  if(playing){ stopSpeech(); playing=true; updatePlayUI(); speak(sentenceTexts[sIdx]||''); }
+}
+
+function updateTtsModeUI(){
+  const browserActive = ttsMode==='browser';
+  // Main settings
+  const br=document.getElementById('tts-radio-browser'),kr=document.getElementById('tts-radio-kokoro');
+  if(br) br.checked=browserActive;
+  if(kr) kr.checked=!browserActive;
+  // Sidebar
+  const rbr=document.getElementById('rsp-tts-radio-browser'),rkr=document.getElementById('rsp-tts-radio-kokoro');
+  if(rbr) rbr.checked=browserActive;
+  if(rkr) rkr.checked=!browserActive;
+  // Visual dimming
+  const bWrap=document.getElementById('browser-voice-wrap'),kWrap=document.getElementById('kokoro-voice-wrap');
+  if(bWrap) bWrap.style.opacity=browserActive?'1':'0.4';
+  if(kWrap) kWrap.style.opacity=!browserActive?'1':'0.4';
+}
+function syncRspKokoro(){
+  const was=localStorage.getItem('pl_kokoro_enabled');
+  const lb=document.getElementById('rsp-kokoro-load-btn');
+  const cb=document.getElementById('rsp-kokoro-clear-btn');
+  const wrap=document.getElementById('rsp-kokoro-voice-wrap');
+  const status=document.getElementById('rsp-kokoro-status');
+  if(cb) cb.style.display=was?'block':'none';
+  if(kokoroTTS){
+    if(lb){lb.textContent='Kokoro Active ✓';lb.disabled=true;}
+    if(status) status.textContent='Ready ✓';
+    if(wrap) wrap.style.display='block';
+    const sel=document.getElementById('rsp-kokoro-voice-select');
+    if(sel&&!sel.innerHTML) sel.innerHTML=KOKORO_VOICES.map(v=>`<option value="${v.id}"${v.id===kokoroVoice?' selected':''}>${v.label}</option>`).join('');
+  } else if(was){
+    if(status) status.textContent='Cached — click to reload';
+  }
+}
+
+function syncRspKokoro(){
+  const was=localStorage.getItem('pl_kokoro_enabled');
+  const lb=document.getElementById('rsp-kokoro-load-btn'),cb=document.getElementById('rsp-kokoro-clear-btn');
+  const wrap=document.getElementById('rsp-kokoro-voice-wrap'),status=document.getElementById('rsp-kokoro-status');
+  if(cb) cb.style.display=was?'block':'none';
+  if(kokoroTTS){
+    if(lb){lb.textContent='Kokoro Active ✓';lb.disabled=true;}
+    if(status) status.textContent='Ready ✓';
+    if(wrap) wrap.style.display='block';
+    const sel=document.getElementById('rsp-kokoro-voice-select');
+    if(sel&&!sel.options.length) sel.innerHTML=KOKORO_VOICES.map(v=>`<option value="${v.id}"${v.id===kokoroVoice?' selected':''}>${v.label}</option>`).join('');
+  } else if(was){ if(status) status.textContent='Cached — click to reload'; }
+}
+function syncKokoroUI(){updateTtsModeUI();const was=localStorage.getItem('pl_kokoro_enabled');const cb=document.getElementById('kokoro-clear-btn'),lb=document.getElementById('kokoro-load-btn');if(cb)cb.style.display=was?'block':'none';if(kokoroTTS){if(lb){lb.textContent='Kokoro Active ✓';lb.disabled=true;}setKokoroStatus('Kokoro ready ✓');populateKokoroVoices();}else if(was){setKokoroStatus('Cached — click to reload');}}
+async function loadKokoro(){if(kokoroLoading||kokoroTTS)return;kokoroLoading=true;const btn=document.getElementById('kokoro-load-btn');if(btn)btn.disabled=true;setKokoroStatus('Loading library...');setKokoroProgress(0,'');try{if(!window._KokoroTTS){const mod=await import("https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm");window._KokoroTTS=mod.KokoroTTS;}setKokoroStatus('Downloading model (~160MB)...');let fp=0;const pi=setInterval(()=>{if(fp<85)fp+=Math.random()*3;setKokoroProgress(Math.min(fp,85),Math.round(Math.min(fp,85))+'%');},800);kokoroTTS=await window._KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});clearInterval(pi);setKokoroProgress(100,'100%');setTimeout(()=>setKokoroProgress(101,''),800);setKokoroStatus('Kokoro ready ✓');if(btn){btn.textContent='Kokoro Active ✓';btn.disabled=true;}const cb=document.getElementById('kokoro-clear-btn');if(cb)cb.style.display='block';populateKokoroVoices();syncRspKokoro();localStorage.setItem('pl_kokoro_enabled','1');if(ttsMode==='browser'){setTtsMode('kokoro');}toast('Kokoro loaded — now active!');}catch(e){setKokoroProgress(0,'');setKokoroStatus('Failed: '+e.message);if(btn)btn.disabled=false;kokoroLoading=false;}}
 async function clearKokoroCache(){try{const keys=await caches.keys();for(const k of keys)await caches.delete(k);kokoroTTS=null;kokoroLoading=false;localStorage.removeItem('pl_kokoro_enabled');const btn=document.getElementById('kokoro-load-btn');if(btn){btn.textContent='Download & Enable Kokoro';btn.disabled=false;}const cb=document.getElementById('kokoro-clear-btn');if(cb)cb.style.display='none';const wrap=document.getElementById('kokoro-voice-wrap');if(wrap)wrap.style.display='none';setKokoroStatus('Cache cleared');toast('Kokoro cache cleared');}catch(e){toast('Error: '+e.message);}}
-async function speakWithKokoro(text){if(!kokoroTTS||!text)return;try{if(_kokoroAudio){try{_kokoroAudio.stop();}catch(e){}}_kokoroAudio=null;const audio=await kokoroTTS.generate(preprocessForTTS(text),{voice:kokoroVoice});if(!_kokoroCtx||_kokoroCtx.state==='closed')_kokoroCtx=new(window.AudioContext||window.webkitAudioContext)();if(_kokoroCtx.state==='suspended')await _kokoroCtx.resume();const buffer=_kokoroCtx.createBuffer(1,audio.audio.length,audio.sampling_rate);buffer.copyToChannel(audio.audio,0);const source=_kokoroCtx.createBufferSource();source.buffer=buffer;source.playbackRate.value=rate;source.connect(_kokoroCtx.destination);_kokoroAudio=source;source.onended=()=>{_kokoroAudio=null;if(playing)doAdvance();};source.start();}catch(e){console.error('Kokoro:',e);const u=new SpeechSynthesisUtterance(text);u.rate=rate;u.pitch=pitch;u.volume=voiceVol;if(selVoice)u.voice=selVoice;u.onend=()=>{if(playing)doAdvance();};window.speechSynthesis.speak(u);}}
+async function speakWithKokoro(text){
+  if(!kokoroTTS||!text) return;
+  try {
+    if(_kokoroAudio){try{_kokoroAudio.stop();}catch(e){}} _kokoroAudio=null;
+    const raw = await kokoroTTS.generate(preprocessForTTS(text),{voice:kokoroVoice});
+    const audioData = raw.audio;
+    const sampleRate = raw.sampling_rate || 24000;
+    if(!audioData||!audioData.length){ if(playing) doAdvance(); return; }
+    if(!_kokoroCtx||_kokoroCtx.state==='closed')
+      _kokoroCtx=new(window.AudioContext||window.webkitAudioContext)();
+    if(_kokoroCtx.state==='suspended') await _kokoroCtx.resume();
+    const buffer=_kokoroCtx.createBuffer(1,audioData.length,sampleRate);
+    buffer.getChannelData(0).set(audioData);
+    const source=_kokoroCtx.createBufferSource();
+    source.buffer=buffer;
+    source.playbackRate.value=rate;
+    source.connect(_kokoroCtx.destination);
+    _kokoroAudio=source;
+    source.onended=()=>{_kokoroAudio=null;if(playing)doAdvance();};
+    source.start();
+  } catch(e){
+    console.error('Kokoro:',e);
+    const u=new SpeechSynthesisUtterance(text);
+    u.rate=rate;u.pitch=pitch;u.volume=voiceVol;
+    if(selVoice)u.voice=selVoice;
+    u.onend=()=>{if(playing)doAdvance();};
+    window.speechSynthesis.speak(u);
+  }
+}
 
 function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.toggle('show'); }
 
