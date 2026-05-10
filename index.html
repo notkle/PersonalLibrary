@@ -76,6 +76,9 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 .ghost-stack .ghost-book { width:155px; height:36px; border-radius:2px; box-shadow:0 2px 8px rgba(0,0,0,0.5); display:flex; align-items:center; padding:0 10px; flex-shrink:0; margin-bottom:-1px; }
 .ghost-stack .ghost-book .ghost-spine-title { font-family:'Playfair Display',serif; font-size:0.65rem; font-weight:700; letter-spacing:0.04em; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1; }
 #mybook-field:empty:before { content:attr(data-placeholder); color:rgba(200,144,42,0.25); font-style:italic; pointer-events:none; }
+body.hide-dock .dock-wrap { transform:translateY(calc(100% + 20px)) !important; pointer-events:none; }
+#reader-view.active { display:flex; flex-direction:column; }
+#mybook-view.active { display:flex; flex-direction:column; }
 
 /* BOOK SPINE */
 .book-spine { width:42px; height:155px; border-radius:2px 0 0 2px; cursor:pointer; position:relative; transition:transform 0.22s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.22s; transform-origin:bottom center; box-shadow:3px 0 8px rgba(0,0,0,0.5),inset -3px 0 5px rgba(0,0,0,0.35); flex-shrink:0; overflow:hidden; user-select:none; }
@@ -134,7 +137,6 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 /* READER VIEW */
 #reader-view { display:none; position:fixed; inset:0; top:56px; overflow:hidden; }
 #reader-view.active { display:flex; flex-direction:column; }
-#mybook-view.active { display:flex; flex-direction:column; }
 .reader-topbar { flex-shrink:0; height:44px; background:#0d0900; border-bottom:1px solid rgba(200,144,42,0.15); display:flex; align-items:center; gap:14px; padding:0 20px; }
 .reader-book-title { font-family:'Playfair Display',serif; font-size:0.95rem; color:var(--amber-light); font-style:italic; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .chapter-select { background:#2a1e0e; border:1px solid rgba(200,144,42,0.25); color:var(--paper); font-family:'Crimson Pro',serif; font-size:0.88rem; padding:4px 8px; border-radius:3px; cursor:pointer; max-width:200px; }
@@ -188,7 +190,7 @@ header { position:fixed; top:0; left:0; right:0; z-index:200; height:56px; backg
 /* DOCK */
 .dock-wrap { position:fixed; bottom:0; left:0; right:0; z-index:400; transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); }
 .dock-wrap.collapsed { transform:translateY(calc(100% - 10px)); }
-body.hide-dock .dock-wrap { transform:translateY(calc(100% + 20px)) !important; pointer-events:none; }
+body.in-library .dock-wrap { transform:translateY(100%) !important; }
 .dock-toggle { position:absolute; top:-18px; left:50%; transform:translateX(-50%); width:48px; height:18px; background:rgba(12,8,2,0.97); border:1px solid rgba(200,144,42,0.25); border-bottom:none; border-radius:8px 8px 0 0; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:1; transition:background 0.15s; white-space:nowrap; }
 .dock-toggle:hover { background:rgba(30,20,5,0.99); }
 .dock-toggle svg { color:rgba(200,144,42,0.6); transition:transform 0.3s, color 0.15s; }
@@ -677,13 +679,8 @@ select::-webkit-scrollbar-button { display: none; height: 0; }
 .bookmark-modal-btns { display:flex; gap:8px; }
 .bookmark-modal-btns .btn { flex:1; text-align:center; }
 </style>
-<script type="module">
-import { KokoroTTS } from "https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.mjs";
-window._KokoroTTS = KokoroTTS;
-window.dispatchEvent(new Event('kokoro-ready'));
-</script>
 </head>
-<body class="in-library hide-dock">
+<body class="in-library">
 
 <header>
   <div class="logo" onclick="goToLibrary()" style="cursor:pointer" title="Go to library">
@@ -711,6 +708,8 @@ window.dispatchEvent(new Event('kokoro-ready'));
     <button class="btn btn-ghost" id="back-btn" style="display:none" onclick="goToLibrary()">← Library</button>
   </div>
 </header>
+<input type="file" id="file-input" accept=".epub,.txt,.html,.htm" multiple style="display:none">
+
 <!-- LIBRARY -->
 <div id="library-view" class="view active">
   <div class="lib-sub" id="lib-count">No books yet</div>
@@ -727,7 +726,6 @@ window.dispatchEvent(new Event('kokoro-ready'));
     <div class="shelf-plank"></div>
   </div>
   <div class="upload-zone" id="upload-zone">
-  <input type="file" id="file-input" accept=".epub,.txt,.html,.htm" multiple style="display:none">
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style="opacity:0.4;margin-bottom:10px">
       <path d="M18 26V10M18 10L12 16M18 10L24 16" stroke="#c8902a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       <path d="M8 28h20" stroke="#c8902a" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
@@ -833,12 +831,10 @@ window.dispatchEvent(new Event('kokoro-ready'));
   <!-- KOKORO TTS -->
   <div class="settings-section">
     <div class="settings-section-title">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#e8b84b" stroke-width="1.4"><path d="M8 1v14M1 8h14" stroke-linecap="round" opacity="0.4"/><circle cx="8" cy="8" r="6"/><path d="M5 8c0-1.7 1.3-3 3-3s3 1.3 3 3" stroke-linecap="round"/></svg>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#e8b84b" stroke-width="1.4"><circle cx="8" cy="8" r="6"/><path d="M5 8c0-1.7 1.3-3 3-3s3 1.3 3 3" stroke-linecap="round"/><path d="M8 11v-3" stroke-linecap="round"/></svg>
       Kokoro AI Voice
     </div>
-    <div style="font-size:0.82rem; color:var(--paper-dark); margin-bottom:14px; line-height:1.6;">
-      High-quality AI voices that run entirely in your browser. Downloads ~160MB on first use, then works offline.
-    </div>
+    <div style="font-size:0.82rem; color:var(--paper-dark); margin-bottom:14px; line-height:1.6;">High-quality AI voices that run entirely in your browser. Downloads ~160MB on first use, then cached offline.</div>
     <div id="kokoro-status" style="font-size:0.82rem; color:rgba(200,144,42,0.6); font-style:italic; margin-bottom:8px; min-height:18px;"></div>
     <div id="kokoro-progress-wrap" style="display:none; margin-bottom:12px;">
       <div style="height:4px; background:rgba(200,144,42,0.12); border-radius:2px; overflow:hidden;">
@@ -846,12 +842,12 @@ window.dispatchEvent(new Event('kokoro-ready'));
       </div>
       <div id="kokoro-progress-text" style="font-size:0.72rem; color:rgba(200,144,42,0.5); margin-top:4px; text-align:right;"></div>
     </div>
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
       <button class="btn-add" id="kokoro-load-btn" onclick="loadKokoro()">Download &amp; Enable Kokoro</button>
       <button class="btn-add" id="kokoro-clear-btn" onclick="clearKokoroCache()" style="display:none; border-color:rgba(200,80,80,0.3); color:#ff9090;">Clear Cache</button>
     </div>
-    <div style="margin-top:14px;" id="kokoro-voice-wrap" style="display:none;">
-      <div class="form-label" style="margin-bottom:6px;">Kokoro Voice</div>
+    <div id="kokoro-voice-wrap" style="margin-top:14px; display:none;">
+      <div class="form-label" style="margin-bottom:6px;">Voice</div>
       <select id="kokoro-voice-select" class="form-input" style="max-width:280px;" onchange="setKokoroVoice(this.value)"></select>
     </div>
   </div>
@@ -1069,7 +1065,6 @@ window.dispatchEvent(new Event('kokoro-ready'));
         stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" fill="none"/>
     </svg>
   </button>
-
   <button class="bookmark-btn" id="dock-settings-btn" onclick="toggleReaderSettings()" title="Settings">⚙</button>
 </div>
 </div>
@@ -1505,21 +1500,23 @@ function showLibraryView() {
   document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
   hideAllViews();
   document.getElementById('library-view').classList.add('active');
+  document.body.classList.add('in-library'); document.body.classList.add('hide-dock');
   document.getElementById('back-btn').style.display='none';
   document.getElementById('bookshelf-btn').style.display='block';
   document.getElementById('settings-btn').style.display='block';
   document.body.classList.add('in-library');
-  document.body.classList.add('hide-dock');
+  document.getElementById('dock').classList.remove('visible');
 }
 function showBookshelfView() {
   document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
   hideAllViews();
   document.getElementById('bookshelf-view').classList.add('active');
+  document.body.classList.add('in-library'); document.body.classList.add('hide-dock');
   document.getElementById('back-btn').style.display='block';
   document.getElementById('bookshelf-btn').style.display='none';
   document.getElementById('settings-btn').style.display='block';
   document.body.classList.add('in-library');
-  document.body.classList.add('hide-dock');
+  document.getElementById('dock').classList.remove('visible');
   renderBookshelf();
 }
 function showMyBookView() {
@@ -1533,19 +1530,22 @@ function showMyBookView() {
   document.body.classList.remove('hide-dock');
   loadMyBookIntoReader();
 }
+
 function showSettingsView() {
   document.getElementById('brightness-overlay').style.background='rgba(0,0,0,0)';
   hideAllViews();
-  setTimeout(syncKokoroUI, 50);
+  document.body.classList.add('in-library'); document.body.classList.add('hide-dock');
+  setTimeout(syncKokoroUI,50);
   document.getElementById('settings-view').classList.add('active');
   document.getElementById('back-btn').style.display='block';
   document.getElementById('bookshelf-btn').style.display='none';
   document.getElementById('settings-btn').style.display='none';
   document.body.classList.add('in-library');
-  document.body.classList.add('hide-dock');
+  document.getElementById('dock').classList.remove('visible');
 }
 function showReaderView() {
   hideAllViews();
+  document.body.classList.remove('in-library'); document.body.classList.remove('hide-dock');
   const _bval=parseInt(localStorage.getItem('pl_brightness')||'0');
   document.getElementById('brightness-overlay').style.background=`rgba(0,0,0,${_bval/100})`;
   document.getElementById('reader-view').classList.add('active');
@@ -1553,11 +1553,11 @@ function showReaderView() {
   document.getElementById('bookshelf-btn').style.display='none';
   document.getElementById('settings-btn').style.display='none';
   document.body.classList.remove('in-library');
-  document.body.classList.remove('hide-dock');
 }
 function goToLibrary() {
   stopSpeech();
   pauseYouTube();
+  sessionStorage.removeItem('pl_open_book');
   sessionStorage.removeItem('pl_open_book');
   renderLibrary();
   showLibraryView();
@@ -1620,8 +1620,8 @@ async function parseEpub(file) {
       try {
         const ext  = (decoded.split('.').pop()||'jpg').toLowerCase().replace('jpg','jpeg');
         const mime = ({jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml'})[ext]||'image/jpeg';
-        const b64 = await entry.async('base64');
-        img.setAttribute('src', `data:${mime};base64,${b64}`);
+        const b64=await entry.async('base64');
+        img.setAttribute('src',`data:${mime};base64,${b64}`);
         img.style.cssText = 'max-width:100%;height:auto;display:block;margin:1em auto';
         img.removeAttribute('width'); img.removeAttribute('height');
       } catch(e) { img.remove(); }
@@ -1921,6 +1921,7 @@ function renderBookshelf(){
 function openBook(id){
   book=books.find(b=>b.id===id);
   if(!book) return;
+  sessionStorage.setItem('pl_open_book',id);
   sessionStorage.setItem('pl_open_book', id);
   chIdx=book.lastCh||0; sIdx=book.lastS||0;
   rate=book.lastRate||1.0; pitch=book.lastPitch||1.0;
@@ -1969,7 +1970,7 @@ function buildSentenceCache(){
       return;
     }
     if(idx!==chIdx && !sentenceCache[idx]){
-      // sentenceCache[idx] left empty — loadChapter populates via splitHtml
+      // sentenceCache left empty — loadChapter populates via splitHtml
     }
     idx++;
     setTimeout(buildNext,0); // yield to browser between each chapter
@@ -2115,7 +2116,7 @@ function attachClickToJump(){
     let bestScore = -1;
     for(let i = 0; i < sentenceTexts.length; i++){
       const st = sentenceTexts[i] || '';
-      if(snippet.length > 4 && st.includes(snippet)){
+      if(snippet.length>4 && st.includes(snippet)){
         const score = 1000 - Math.abs(i - sIdx);
         if(score > bestScore){ bestScore = score; bestIdx = i; }
       }
@@ -2225,17 +2226,13 @@ function updateProgress(){
   if(book.id==='__mybook__'){
     const pct=sentences.length>0?Math.round(sIdx/sentences.length*100):0;
     if(EL.progFill) EL.progFill.style.width=pct+'%';
-    if(EL.progPct)  EL.progPct.textContent=pct+'%';
+    if(EL.progPct) EL.progPct.textContent=pct+'%';
     return;
   }
   const totalChars=book.chapters.reduce((a,ch)=>a+(ch.text?.length||0),0);
-  const avgCharPerSent = totalChars > 0 ? totalChars / (totalSentences||1) : 80;
+  const avgCharPerSent=totalChars>0?totalChars/(totalSentences||1):80;
   let acc=0;
-  book.chapters.forEach((ch,i)=>{
-    sentencesBefore[i]=acc;
-    if(sentenceCache[i]?.length) acc+=sentenceCache[i].length;
-    else acc+=Math.round((ch.text?.length||0)/avgCharPerSent);
-  });
+  book.chapters.forEach((ch,i)=>{ sentencesBefore[i]=acc; if(sentenceCache[i]?.length) acc+=sentenceCache[i].length; else acc+=Math.round((ch.text?.length||0)/avgCharPerSent); });
   totalSentences=acc;
   const before=sentencesBefore[chIdx]||0;
   const pct=totalSentences>0?Math.round((before+sIdx)/totalSentences*100):0;
@@ -2264,25 +2261,17 @@ function preprocessForTTS(text){
 
 function speak(text){
   if(!text) return;
-  if(kokoroTTS){
-    window.speechSynthesis.cancel();
-    speakWithKokoro(text);
-    return;
-  }
+  if(kokoroTTS){ window.speechSynthesis.cancel(); speakWithKokoro(text); return; }
   window.speechSynthesis.cancel();
-  text = preprocessForTTS(text);
+  text=preprocessForTTS(text);
   utt=new SpeechSynthesisUtterance(text);
-  utt.rate=rate; utt.pitch=pitch; utt.volume=voiceVol;
-  if(selVoice) utt.voice=selVoice;
-  utt.onend=()=>{ if(playing) doAdvance(); };
-  utt.onerror=e=>{ if(e.error!=='interrupted'&&playing) doAdvance(); };
+  utt.rate=rate;utt.pitch=pitch;utt.volume=voiceVol;
+  if(selVoice)utt.voice=selVoice;
+  utt.onend=()=>{if(playing)doAdvance();};
+  utt.onerror=e=>{if(e.error!=='interrupted'&&playing)doAdvance();};
   window.speechSynthesis.speak(utt);
 }
-function stopSpeech(){
-  window.speechSynthesis.cancel();
-  if(_kokoroAudio){ try{ _kokoroAudio.stop(); }catch(e){} _kokoroAudio=null; }
-  playing=false; updatePlayUI();
-}
+function stopSpeech(){ window.speechSynthesis.cancel(); if(_kokoroAudio){try{_kokoroAudio.stop();}catch(e){}  _kokoroAudio=null;} playing=false; updatePlayUI(); }
 function togglePlay(){
   if(window.speechSynthesis.paused){
     window.speechSynthesis.resume(); playing=true; resumeYouTube();
@@ -2302,7 +2291,7 @@ function doAdvance(){
     sIdx++;
     highlightReading(); scrollToReading(); updateProgress();
     if(playing) speak(sentenceTexts[sIdx]||"");
-  } else if(book.id!=='__mybook' && chIdx<book.chapters.length-1){
+  } else if(chIdx<book.chapters.length-1){
     const wasPlaying = playing;
     loadChapter(chIdx+1, 0);
     // Scroll to top of new chapter
@@ -2558,7 +2547,7 @@ function toggleDock(){
   localStorage.setItem('pl_dock_collapsed', dockCollapsed);
   applyDockState();
 }
-// applyDockState called in init
+applyDockState();
 
 // ═══════════════════════════════════════════
 // CONTEXT MENU
@@ -2601,9 +2590,8 @@ function toggleReaderSettings(){
 }
 function closeReaderSettings(){
   document.getElementById('reader-settings-overlay').classList.remove('show');
-  const btn = document.getElementById('dock-settings-btn') || document.getElementById('topbar-settings-btn');
-  const btn2 = document.getElementById('dock-settings-btn') || document.getElementById('topbar-settings-btn');
-  if(btn2) btn2.classList.remove('active');
+  const btn2=document.getElementById('dock-settings-btn')||document.getElementById('topbar-settings-btn');
+  if(btn2)btn2.classList.remove('active');
 }
 
 // Sync floating panel controls to match current settings state
@@ -2761,8 +2749,8 @@ function changeBrightness(delta) {
 function setBrightness(val) {
   val = parseInt(val);
   const opacity = val / 100;
-  const inReader = document.getElementById('reader-view')?.classList.contains('active');
-  document.getElementById('brightness-overlay').style.background = inReader ? `rgba(0,0,0,${opacity})` : 'rgba(0,0,0,0)';
+  const inReader=document.getElementById('reader-view')?.classList.contains('active');
+  document.getElementById('brightness-overlay').style.background=inReader?`rgba(0,0,0,${opacity})`:'rgba(0,0,0,0)';
   localStorage.setItem('pl_brightness', val);
   const bv = document.getElementById('bright-val');
   if (bv) bv.textContent = val + '%';
@@ -2951,375 +2939,70 @@ document.addEventListener('click', e => {
 
 
 // ═══════════════════════════════════════════
-// RETURN SLOT — drag books to delete
+// RETURN SLOT + MY BOOK + KOKORO
 // ═══════════════════════════════════════════
-let deleteMode = false;
-let selectedForDelete = new Set();
-let returnMode = false;
-let dragBookId = null, dragStartX = 0, dragStartY = 0, isDragging = false;
-let pendingReturnIds = new Set();
+let deleteMode=false, selectedForDelete=new Set(), returnMode=false;
+let dragBookId=null, dragStartX=0, dragStartY=0, isDragging=false, pendingReturnIds=new Set();
 
-function toggleReturnMode(){
-  returnMode = !returnMode;
-  selectedForDelete.clear(); pendingReturnIds.clear();
-  const btn = document.getElementById('return-toggle-btn');
-  if(btn) btn.classList.toggle('active', returnMode);
-  renderBookshelf();
-}
+function toggleReturnMode(){ returnMode=!returnMode; selectedForDelete.clear(); pendingReturnIds.clear(); const btn=document.getElementById('return-toggle-btn'); if(btn) btn.classList.toggle('active',returnMode); renderBookshelf(); }
+function toggleBookSelect(id){ if(!returnMode) return; if(selectedForDelete.has(id)) selectedForDelete.delete(id); else selectedForDelete.add(id); const s=document.querySelector(`#bookshelf-row .book-spine[data-id="${id}"]`); if(s) s.classList.toggle('drag-selected',selectedForDelete.has(id)); }
 
-function toggleBookSelect(id){
-  if(!returnMode) return;
-  if(selectedForDelete.has(id)) selectedForDelete.delete(id);
-  else selectedForDelete.add(id);
-  const spine = document.querySelector(`#bookshelf-row .book-spine[data-id="${id}"]`);
-  if(spine) spine.classList.toggle('drag-selected', selectedForDelete.has(id));
-}
+function playReturnSound(){ try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const b=ctx.sampleRate*0.18,buf=ctx.createBuffer(1,b,ctx.sampleRate),d=buf.getChannelData(0); for(let i=0;i<b;i++) d[i]=(Math.random()*2-1)*(1-i/b)*0.25; const s=ctx.createBufferSource();s.buffer=buf;const g=ctx.createGain();g.gain.setValueAtTime(0.4,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.18);s.connect(g);g.connect(ctx.destination);s.start(); setTimeout(()=>{ const o=ctx.createOscillator(),g2=ctx.createGain();o.type='sine';o.frequency.setValueAtTime(120,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(40,ctx.currentTime+0.12);g2.gain.setValueAtTime(0.5,ctx.currentTime);g2.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.15);o.connect(g2);g2.connect(ctx.destination);o.start();o.stop(ctx.currentTime+0.15); },160); }catch(e){} }
 
-function playReturnSound(){
-  try {
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const bufSize = ctx.sampleRate * 0.18;
-    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1)*(1-i/bufSize)*0.25;
-    const src = ctx.createBufferSource(); src.buffer = buf;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.4,ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.18);
-    src.connect(g); g.connect(ctx.destination); src.start();
-    setTimeout(()=>{
-      const osc=ctx.createOscillator(); const g2=ctx.createGain();
-      osc.type='sine'; osc.frequency.setValueAtTime(120,ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(40,ctx.currentTime+0.12);
-      g2.gain.setValueAtTime(0.5,ctx.currentTime); g2.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.15);
-      osc.connect(g2); g2.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime+0.15);
-    },160);
-  }catch(e){}
-}
+function buildGhostStack(id){ const gs=document.getElementById('ghost-stack');gs.innerHTML=''; const ids=(returnMode&&selectedForDelete.size>0)?[...selectedForDelete]:[id]; ids.slice(0,3).forEach(id=>{ const b=books.find(x=>x.id===id); const d=document.createElement('div');d.className=`ghost-book bc${colorIdx(b?.title||'')}`;d.innerHTML=`<span class="ghost-spine-title">${b?.title||''}</span>`;gs.appendChild(d); }); }
 
-function buildGhostStack(draggedId){
-  const ghostStack = document.getElementById('ghost-stack');
-  ghostStack.innerHTML = '';
-  const ids = (returnMode && selectedForDelete.size > 0) ? [...selectedForDelete] : [draggedId];
-  ids.slice(0,3).forEach(id=>{
-    const b = books.find(x=>x.id===id);
-    const ci = colorIdx(b?.title||'');
-    const div = document.createElement('div');
-    div.className = `ghost-book bc${ci}`;
-    div.innerHTML = `<span class="ghost-spine-title">${b?.title||''}</span>`;
-    ghostStack.appendChild(div);
-  });
-}
+function initBookDrag(spine,bookId){ spine.addEventListener('mousedown',e=>{ dragBookId=bookId;dragStartX=e.clientX;dragStartY=e.clientY;isDragging=false; const ghost=document.getElementById('drag-ghost'); buildGhostStack(bookId); ghost.style.left=(e.clientX-77)+'px';ghost.style.top=(e.clientY-18)+'px'; ghost.classList.add('ghost-visible'); spine.classList.add('dragging-source');spine.style.transform='translateY(0)'; document.getElementById('return-slot')?.classList.add('pulsing'); document.querySelector('.return-slot-label')?.classList.add('pulsing');
+  const onMove=e2=>{ const dx=e2.clientX-dragStartX,dy=e2.clientY-dragStartY; if(!isDragging&&Math.sqrt(dx*dx+dy*dy)>6){ isDragging=true; const ids=(returnMode&&selectedForDelete.size>0)?[...selectedForDelete]:[bookId]; ids.forEach(id=>{ const s=document.querySelector(`#bookshelf-row .book-spine[data-id="${id}"]`); if(s){s.classList.add('dragging-source');s.style.transform='translateY(0)';} }); } if(isDragging){ ghost.style.left=(e2.clientX-77)+'px';ghost.style.top=(e2.clientY-18)+'px'; const slot=document.getElementById('return-slot'),sr=slot?.getBoundingClientRect(),over=sr&&e2.clientX>=sr.left&&e2.clientX<=sr.right&&e2.clientY>=sr.top&&e2.clientY<=sr.bottom; slot?.classList.toggle('slot-hover',over); } };
+  const onUp=e2=>{ document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp); document.querySelectorAll('#bookshelf-row .book-spine.dragging-source').forEach(s=>{s.classList.remove('dragging-source');s.style.transform='';}); ghost.classList.remove('ghost-visible'); document.getElementById('return-slot')?.classList.remove('slot-hover','pulsing'); document.querySelector('.return-slot-label')?.classList.remove('pulsing'); if(!isDragging){isDragging=false;dragBookId=null;if(returnMode)toggleBookSelect(bookId);return;} isDragging=false; const slot=document.getElementById('return-slot'),sr=slot?.getBoundingClientRect(),over=sr&&e2.clientX>=sr.left&&e2.clientX<=sr.right&&e2.clientY>=sr.top&&e2.clientY<=sr.bottom; if(over){ const ids=(returnMode&&selectedForDelete.size>0)?[...selectedForDelete]:[bookId]; pendingReturnIds=new Set(ids); const names=ids.map(id=>books.find(b=>b.id===id)?.title||'').filter(Boolean); document.getElementById('modal-delete-msg').textContent=ids.length===1?`Delete "${names[0]}"?`:`Delete ${ids.length} books?`; openModal('modal-delete-books'); } dragBookId=null; };
+  document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);e.preventDefault(); }); }
 
-function initBookDrag(spine, bookId){
-  spine.addEventListener('mousedown', e=>{
-    dragBookId = bookId; dragStartX = e.clientX; dragStartY = e.clientY; isDragging = false;
-    const ghost = document.getElementById('drag-ghost');
-    buildGhostStack(bookId);
-    ghost.style.left=(e.clientX-77)+'px'; ghost.style.top=(e.clientY-18)+'px';
-    ghost.classList.add('ghost-visible');
-    spine.classList.add('dragging-source');
-    spine.style.transform='translateY(0)';
-    document.getElementById('return-slot')?.classList.add('pulsing');
-    document.querySelector('.return-slot-label')?.classList.add('pulsing');
-    const onMove = e2=>{
-      const dx=e2.clientX-dragStartX, dy=e2.clientY-dragStartY;
-      if(!isDragging && Math.sqrt(dx*dx+dy*dy)>6){
-        isDragging = true;
-        const ids=(returnMode&&selectedForDelete.size>0)?[...selectedForDelete]:[bookId];
-        ids.forEach(id=>{ const s=document.querySelector(`#bookshelf-row .book-spine[data-id="${id}"]`); if(s){ s.classList.add('dragging-source'); s.style.transform='translateY(0)'; } });
-      }
-      if(isDragging){
-        ghost.style.left=(e2.clientX-77)+'px'; ghost.style.top=(e2.clientY-18)+'px';
-        const slot=document.getElementById('return-slot'); const sr=slot?.getBoundingClientRect();
-        const over=sr&&e2.clientX>=sr.left&&e2.clientX<=sr.right&&e2.clientY>=sr.top&&e2.clientY<=sr.bottom;
-        slot?.classList.toggle('slot-hover',over);
-      }
-    };
-    const onUp = e2=>{
-      document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp);
-      document.querySelectorAll('#bookshelf-row .book-spine.dragging-source').forEach(s=>{ s.classList.remove('dragging-source'); s.style.transform=''; });
-      ghost.classList.remove('ghost-visible');
-      document.getElementById('return-slot')?.classList.remove('slot-hover','pulsing');
-      document.querySelector('.return-slot-label')?.classList.remove('pulsing');
-      if(!isDragging){ isDragging=false; dragBookId=null; if(returnMode) toggleBookSelect(bookId); return; }
-      isDragging=false;
-      const slot=document.getElementById('return-slot'); const sr=slot?.getBoundingClientRect();
-      const over=sr&&e2.clientX>=sr.left&&e2.clientX<=sr.right&&e2.clientY>=sr.top&&e2.clientY<=sr.bottom;
-      if(over){
-        const ids=(returnMode&&selectedForDelete.size>0)?[...selectedForDelete]:[bookId];
-        pendingReturnIds=new Set(ids);
-        const names=ids.map(id=>books.find(b=>b.id===id)?.title||'').filter(Boolean);
-        document.getElementById('modal-delete-msg').textContent=ids.length===1?`Delete "${names[0]}"?`:`Delete ${ids.length} books?`;
-        openModal('modal-delete-books');
-      }
-      dragBookId=null;
-    };
-    document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);
-    e.preventDefault();
-  });
-}
+async function executeDeleteSelected(){ closeModal('modal-delete-books');playReturnSound(); const ids=pendingReturnIds.size>0?[...pendingReturnIds]:[...selectedForDelete]; for(const id of ids){await dbDel('books',id);books=books.filter(b=>b.id!==id);} pendingReturnIds.clear();selectedForDelete.clear();returnMode=false; const btn=document.getElementById('return-toggle-btn');if(btn)btn.classList.remove('active'); renderLibrary();renderBookshelf();toast('Books returned'); }
+function cancelDeleteSelected(){ closeModal('modal-delete-books');pendingReturnIds.clear(); }
+function confirmDeleteSelected(){ if(!selectedForDelete.size)return; openModal('modal-delete-books'); document.getElementById('modal-delete-msg').textContent=`Delete ${selectedForDelete.size} book${selectedForDelete.size!==1?'s':''}? This cannot be undone.`; }
 
-async function executeDeleteSelected(){
-  closeModal('modal-delete-books');
-  playReturnSound();
-  const ids=pendingReturnIds.size>0?[...pendingReturnIds]:[...selectedForDelete];
-  for(const id of ids){ await dbDel('books',id); books=books.filter(b=>b.id!==id); }
-  pendingReturnIds.clear(); selectedForDelete.clear(); returnMode=false;
-  const btn=document.getElementById('return-toggle-btn'); if(btn) btn.classList.remove('active');
-  renderLibrary(); renderBookshelf(); toast('Books returned');
-}
-
-function cancelDeleteSelected(){
-  closeModal('modal-delete-books');
-  pendingReturnIds.clear();
-}
-
-function confirmDeleteSelected(){
-  if(!selectedForDelete.size) return;
-  openModal('modal-delete-books');
-  document.getElementById('modal-delete-msg').textContent=`Delete ${selectedForDelete.size} book${selectedForDelete.size!==1?'s':''}? This cannot be undone.`;
-}
-
-// ═══════════════════════════════════════════
 // MY BOOK
-// ═══════════════════════════════════════════
-const MYBOOK_KEY = 'pl_mybook_text';
+const MYBOOK_KEY='pl_mybook_text';
+function openMyBook(){ book={title:'My Book',chapters:[],lastCh:0,lastS:0,lastRate:rate,lastPitch:pitch,id:'__mybook__'};chIdx=0;sIdx=0; showMyBookView(); }
+function loadMyBookIntoReader(){ const saved=localStorage.getItem(MYBOOK_KEY)||''; const field=document.getElementById('mybook-field'); if(!field)return; field.textContent=saved; if(saved.trim())syncMyBookToReader(); if(!field._pasteAttached){field._pasteAttached=true;field.addEventListener('paste',handleMyBookPaste);} }
+function myBookChanged(){ const field=document.getElementById('mybook-field');if(!field)return; localStorage.setItem(MYBOOK_KEY,field.textContent||'');syncMyBookToReader(); }
+function syncMyBookToReader(){ const field=document.getElementById('mybook-field');if(!field)return; const text=(field.textContent||'').trim(); sentences=text?splitHtml(text):[]; sentenceTexts=sentences.map(s=>{const t=document.createElement('div');t.innerHTML=s;return t.textContent.trim();}); sIdx=Math.min(sIdx,Math.max(0,sentences.length-1)); }
+function handleMyBookPaste(e){ const items=Array.from(e.clipboardData?.items||[]); const img=items.find(i=>i.kind==='file'&&i.type.startsWith('image/')); if(img){ e.preventDefault(); setMyBookStatus('Transcribing...'); const file=img.getAsFile(); const reader=new FileReader(); reader.onload=async()=>{ const b64=reader.result.split(',')[1]; const mime=img.type||'image/png'; try{ const res=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:'Transcribe all text from this image exactly. Output only the transcribed text.',image:{data:b64,mimeType:mime}})}); const data=await res.json(); const text=(data.text||'').trim(); if(text){ const field=document.getElementById('mybook-field'); const existing=(field.textContent||'').trim(); field.textContent=existing?existing+'\n\n'+text:text; localStorage.setItem(MYBOOK_KEY,field.textContent); syncMyBookToReader(); setMyBookStatus('Done — press play to read'); }else setMyBookStatus('No text found'); }catch(err){setMyBookStatus('Error: '+err.message);} }; reader.readAsDataURL(file); }else{ setTimeout(()=>{myBookChanged();},0); } }
+function setMyBookStatus(msg){const el=document.getElementById('mybook-status');if(el)el.textContent=msg;}
+function clearMyBook(){ const field=document.getElementById('mybook-field');if(field)field.textContent=''; localStorage.removeItem(MYBOOK_KEY);sentences=[];sentenceTexts=[];setMyBookStatus('Cleared');setTimeout(()=>setMyBookStatus(''),2000); }
 
-function openMyBook(){
-  // Set a minimal book-like object so dock functions work
-  book = { title:'My Book', chapters:[], lastCh:0, lastS:0, lastRate:rate, lastPitch:pitch, id:'__mybook__' };
-  chIdx=0; sIdx=0;
-  showMyBookView();
-}
-
-function loadMyBookIntoReader(){
-  const saved = localStorage.getItem(MYBOOK_KEY) || '';
-  const field = document.getElementById('mybook-field');
-  if(!field) return;
-  field.textContent = saved;
-  if(saved.trim()) syncMyBookToReader();
-  // Attach paste handler via JS (more reliable than onpaste attribute on contenteditable)
-  if(!field._pasteAttached){
-    field._pasteAttached = true;
-    field.addEventListener('paste', e => handleMyBookPaste(e));
-  }
-}
-
-function myBookChanged(){
-  const field = document.getElementById('mybook-field');
-  if(!field) return;
-  localStorage.setItem(MYBOOK_KEY, field.textContent || '');
-  syncMyBookToReader();
-}
-
-function syncMyBookToReader(){
-  const field = document.getElementById('mybook-field');
-  if(!field) return;
-  const text = (field.textContent || '').trim();
-  sentences = text ? splitHtml(text) : [];
-  sentenceTexts = sentences.map(s=>{ const t=document.createElement('div'); t.innerHTML=s; return t.textContent.trim(); });
-  sIdx = Math.min(sIdx, Math.max(0, sentences.length-1));
-}
-
-function handleMyBookPaste(e){
-  const items = Array.from(e.clipboardData?.items || []);
-  const imageItem = items.find(i => i.kind === 'file' && i.type.startsWith('image/'));
-  if(imageItem){
-    e.preventDefault();
-    setMyBookStatus('Transcribing...');
-    const file = imageItem.getAsFile();
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const b64 = reader.result.split(',')[1];
-      const mime = imageItem.type || 'image/png';
-      try {
-        const res = await fetch(WORKER_URL, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            prompt: 'Transcribe all text from this image. Output only the transcribed text.',
-            image: { data: b64, mimeType: mime }
-          })
-        });
-        const data = await res.json();
-        const text = (data.text || '').trim();
-        if(text){
-          const field = document.getElementById('mybook-field');
-          const existing = (field.textContent || '').trim();
-          field.textContent = existing ? existing + '\n\n' + text : text;
-          localStorage.setItem(MYBOOK_KEY, field.textContent);
-          syncMyBookToReader();
-          setMyBookStatus('Done — press play to read');
-        } else { setMyBookStatus('No text found in image'); }
-      } catch(err){ setMyBookStatus('Error: ' + err.message); }
-    };
-    reader.readAsDataURL(file);
-  } else {
-    setTimeout(()=>{ myBookChanged(); }, 0);
-  }
-}
-
-function fileToBase64(file){
-  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
-}
-
-function setMyBookStatus(msg){ const el=document.getElementById('mybook-status'); if(el) el.textContent=msg; }
-
-function clearMyBook(){
-  const field=document.getElementById('mybook-field');
-  if(field) field.textContent='';
-  localStorage.removeItem(MYBOOK_KEY);
-  sentences=[]; sentenceTexts=[];
-  setMyBookStatus('Cleared');
-  setTimeout(()=>setMyBookStatus(''),2000);
-}
-
-
-// ═══════════════════════════════════════════
 // KOKORO TTS
-// ═══════════════════════════════════════════
-let kokoroTTS = null;
-let kokoroVoice = localStorage.getItem('pl_kokoro_voice') || 'af_heart';
-let kokoroLoading = false;
-let _kokoroAudio = null;
-let _kokoroCtx = null;
-
-const KOKORO_VOICES = [
-  {id:'af_heart',label:'Heart (US Female)'},{id:'af_alloy',label:'Alloy (US Female)'},
-  {id:'af_aoede',label:'Aoede (US Female)'},{id:'af_bella',label:'Bella (US Female)'},
-  {id:'af_jessica',label:'Jessica (US Female)'},{id:'af_nicole',label:'Nicole (US Female)'},
-  {id:'af_nova',label:'Nova (US Female)'},{id:'af_sarah',label:'Sarah (US Female)'},
-  {id:'af_sky',label:'Sky (US Female)'},{id:'am_adam',label:'Adam (US Male)'},
-  {id:'am_echo',label:'Echo (US Male)'},{id:'am_eric',label:'Eric (US Male)'},
-  {id:'am_fenrir',label:'Fenrir (US Male)'},{id:'am_liam',label:'Liam (US Male)'},
-  {id:'am_michael',label:'Michael (US Male)'},{id:'am_onyx',label:'Onyx (US Male)'},
-  {id:'am_puck',label:'Puck (US Male)'},{id:'bf_emma',label:'Emma (UK Female)'},
-  {id:'bf_isabella',label:'Isabella (UK Female)'},{id:'bm_george',label:'George (UK Male)'},
-  {id:'bm_lewis',label:'Lewis (UK Male)'},
-];
-
-function setKokoroStatus(msg){ const el=document.getElementById('kokoro-status'); if(el) el.textContent=msg; }
-
-function populateKokoroVoices(){
-  const sel=document.getElementById('kokoro-voice-select');
-  if(!sel) return;
-  sel.innerHTML=KOKORO_VOICES.map(v=>`<option value="${v.id}"${v.id===kokoroVoice?' selected':''}>${v.label}</option>`).join('');
-  const wrap=document.getElementById('kokoro-voice-wrap');
-  if(wrap) wrap.style.display='block';
-}
-
-function setKokoroVoice(v){ kokoroVoice=v; localStorage.setItem('pl_kokoro_voice',v); }
-
-function setKokoroProgress(pct, label){
-  const wrap=document.getElementById('kokoro-progress-wrap');
-  const bar=document.getElementById('kokoro-progress-bar');
-  const txt=document.getElementById('kokoro-progress-text');
-  if(wrap) wrap.style.display = pct < 100 ? 'block' : 'none';
-  if(bar) bar.style.width = pct+'%';
-  if(txt) txt.textContent = label||'';
-}
-
-function syncKokoroUI(){
-  // Called on settings open — show correct state
-  const wasEnabled = localStorage.getItem('pl_kokoro_enabled');
-  const clearBtn=document.getElementById('kokoro-clear-btn');
-  const loadBtn=document.getElementById('kokoro-load-btn');
-  if(clearBtn) clearBtn.style.display = wasEnabled ? 'block' : 'none';
-  if(kokoroTTS){
-    if(loadBtn){loadBtn.textContent='Kokoro Active ✓';loadBtn.disabled=true;}
-    setKokoroStatus('Kokoro ready ✓');
-    populateKokoroVoices();
-  } else if(wasEnabled){
-    setKokoroStatus('Cached — click to reload');
-    if(clearBtn) clearBtn.style.display='block';
-  }
-}
-
-async function loadKokoro(){
-  if(kokoroLoading||kokoroTTS) return;
-  kokoroLoading=true;
-  const btn=document.getElementById('kokoro-load-btn');
-  if(btn) btn.disabled=true;
-  setKokoroStatus('Starting download...');
-  setKokoroProgress(0,'');
-  try {
-    if(!window._KokoroTTS){
-      setKokoroStatus('Loading library...');
-      await new Promise(res=>window.addEventListener('kokoro-ready',res,{once:true}));
-    }
-    setKokoroStatus('Downloading model (~160MB)...');
-    // Simulate progress during download (transformers.js doesn't expose byte progress)
-    let fakeProgress = 0;
-    const progressInterval = setInterval(()=>{
-      if(fakeProgress < 85){ fakeProgress += Math.random()*3; }
-      setKokoroProgress(Math.min(fakeProgress,85), Math.round(Math.min(fakeProgress,85))+'%');
-    }, 800);
-    kokoroTTS=await window._KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});
-    clearInterval(progressInterval);
-    setKokoroProgress(100,'100%');
-    setTimeout(()=>setKokoroProgress(101,''),800);
-    setKokoroStatus('Kokoro ready ✓');
-    if(btn){btn.textContent='Kokoro Active ✓';btn.disabled=true;}
-    const clearBtn=document.getElementById('kokoro-clear-btn');
-    if(clearBtn) clearBtn.style.display='block';
-    populateKokoroVoices();
-    localStorage.setItem('pl_kokoro_enabled','1');
-    toast('Kokoro loaded — enjoy the upgrade!');
-  } catch(e){
-    setKokoroProgress(0,'');
-    setKokoroStatus('Failed: '+e.message);
-    if(btn) btn.disabled=false;
-    kokoroLoading=false;
-  }
-}
-
-async function clearKokoroCache(){
-  try {
-    const keys=await caches.keys();
-    for(const key of keys) await caches.delete(key);
-    kokoroTTS=null; kokoroLoading=false;
-    localStorage.removeItem('pl_kokoro_enabled');
-    const btn=document.getElementById('kokoro-load-btn');
-    if(btn){btn.textContent='Download & Enable Kokoro';btn.disabled=false;}
-    const clearBtn=document.getElementById('kokoro-clear-btn');
-    if(clearBtn) clearBtn.style.display='none';
-    const wrap=document.getElementById('kokoro-voice-wrap');
-    if(wrap) wrap.style.display='none';
-    setKokoroStatus('Cache cleared');
-    toast('Kokoro cache cleared');
-  } catch(e){ toast('Error: '+e.message); }
-}
-
-async function speakWithKokoro(text){
-  if(!kokoroTTS||!text) return;
-  try {
-    if(_kokoroAudio){try{_kokoroAudio.stop();}catch(e){} _kokoroAudio=null;}
-    const audio=await kokoroTTS.generate(preprocessForTTS(text),{voice:kokoroVoice});
-    if(!_kokoroCtx||_kokoroCtx.state==='closed'){
-      _kokoroCtx=new (window.AudioContext||window.webkitAudioContext)();
-    }
-    if(_kokoroCtx.state==='suspended') await _kokoroCtx.resume();
-    const buffer=_kokoroCtx.createBuffer(1,audio.audio.length,audio.sampling_rate);
-    buffer.copyToChannel(audio.audio,0);
-    const source=_kokoroCtx.createBufferSource();
-    source.buffer=buffer;
-    source.playbackRate.value=rate;
-    source.connect(_kokoroCtx.destination);
-    _kokoroAudio=source;
-    source.onended=()=>{ _kokoroAudio=null; if(playing) doAdvance(); };
-    source.start();
-  } catch(e){
-    console.error('Kokoro error:',e);
-    // fallback to browser TTS
-    window.speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(text);
-    u.rate=rate; u.pitch=pitch; u.volume=voiceVol;
-    if(selVoice) u.voice=selVoice;
-    u.onend=()=>{ if(playing) doAdvance(); };
-    window.speechSynthesis.speak(u);
-  }
-}
+let kokoroTTS=null,kokoroVoice=localStorage.getItem('pl_kokoro_voice')||'af_heart',kokoroLoading=false,_kokoroAudio=null,_kokoroCtx=null;
+const KOKORO_VOICES=[{id:'af_heart',label:'Heart (US Female)'},{id:'af_alloy',label:'Alloy (US Female)'},{id:'af_aoede',label:'Aoede (US Female)'},{id:'af_bella',label:'Bella (US Female)'},{id:'af_jessica',label:'Jessica (US Female)'},{id:'af_nicole',label:'Nicole (US Female)'},{id:'af_nova',label:'Nova (US Female)'},{id:'af_sarah',label:'Sarah (US Female)'},{id:'af_sky',label:'Sky (US Female)'},{id:'am_adam',label:'Adam (US Male)'},{id:'am_echo',label:'Echo (US Male)'},{id:'am_eric',label:'Eric (US Male)'},{id:'am_fenrir',label:'Fenrir (US Male)'},{id:'am_liam',label:'Liam (US Male)'},{id:'am_michael',label:'Michael (US Male)'},{id:'am_onyx',label:'Onyx (US Male)'},{id:'am_puck',label:'Puck (US Male)'},{id:'bf_emma',label:'Emma (UK Female)'},{id:'bf_isabella',label:'Isabella (UK Female)'},{id:'bm_george',label:'George (UK Male)'},{id:'bm_lewis',label:'Lewis (UK Male)'}];
+function setKokoroStatus(msg){const el=document.getElementById('kokoro-status');if(el)el.textContent=msg;}
+function setKokoroProgress(pct,label){const wrap=document.getElementById('kokoro-progress-wrap'),bar=document.getElementById('kokoro-progress-bar'),txt=document.getElementById('kokoro-progress-text');if(wrap)wrap.style.display=pct<100?'block':'none';if(bar)bar.style.width=pct+'%';if(txt)txt.textContent=label||'';}
+function populateKokoroVoices(){const sel=document.getElementById('kokoro-voice-select');if(!sel)return;sel.innerHTML=KOKORO_VOICES.map(v=>`<option value="${v.id}"${v.id===kokoroVoice?' selected':''}>${v.label}</option>`).join('');const wrap=document.getElementById('kokoro-voice-wrap');if(wrap)wrap.style.display='block';}
+function setKokoroVoice(v){kokoroVoice=v;localStorage.setItem('pl_kokoro_voice',v);}
+function syncKokoroUI(){const was=localStorage.getItem('pl_kokoro_enabled');const cb=document.getElementById('kokoro-clear-btn'),lb=document.getElementById('kokoro-load-btn');if(cb)cb.style.display=was?'block':'none';if(kokoroTTS){if(lb){lb.textContent='Kokoro Active ✓';lb.disabled=true;}setKokoroStatus('Kokoro ready ✓');populateKokoroVoices();}else if(was){setKokoroStatus('Cached — click to reload');}}
+async function loadKokoro(){if(kokoroLoading||kokoroTTS)return;kokoroLoading=true;const btn=document.getElementById('kokoro-load-btn');if(btn)btn.disabled=true;setKokoroStatus('Loading library...');setKokoroProgress(0,'');try{if(!window._KokoroTTS){const mod=await import("https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.mjs");window._KokoroTTS=mod.KokoroTTS;}setKokoroStatus('Downloading model (~160MB)...');let fp=0;const pi=setInterval(()=>{if(fp<85)fp+=Math.random()*3;setKokoroProgress(Math.min(fp,85),Math.round(Math.min(fp,85))+'%');},800);kokoroTTS=await window._KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX',{dtype:'q8',device:'wasm'});clearInterval(pi);setKokoroProgress(100,'100%');setTimeout(()=>setKokoroProgress(101,''),800);setKokoroStatus('Kokoro ready ✓');if(btn){btn.textContent='Kokoro Active ✓';btn.disabled=true;}const cb=document.getElementById('kokoro-clear-btn');if(cb)cb.style.display='block';populateKokoroVoices();localStorage.setItem('pl_kokoro_enabled','1');toast('Kokoro loaded!');}catch(e){setKokoroProgress(0,'');setKokoroStatus('Failed: '+e.message);if(btn)btn.disabled=false;kokoroLoading=false;}}
+async function clearKokoroCache(){try{const keys=await caches.keys();for(const k of keys)await caches.delete(k);kokoroTTS=null;kokoroLoading=false;localStorage.removeItem('pl_kokoro_enabled');const btn=document.getElementById('kokoro-load-btn');if(btn){btn.textContent='Download & Enable Kokoro';btn.disabled=false;}const cb=document.getElementById('kokoro-clear-btn');if(cb)cb.style.display='none';const wrap=document.getElementById('kokoro-voice-wrap');if(wrap)wrap.style.display='none';setKokoroStatus('Cache cleared');toast('Kokoro cache cleared');}catch(e){toast('Error: '+e.message);}}
+async function speakWithKokoro(text){if(!kokoroTTS||!text)return;try{if(_kokoroAudio){try{_kokoroAudio.stop();}catch(e){}}_kokoroAudio=null;const audio=await kokoroTTS.generate(preprocessForTTS(text),{voice:kokoroVoice});if(!_kokoroCtx||_kokoroCtx.state==='closed')_kokoroCtx=new(window.AudioContext||window.webkitAudioContext)();if(_kokoroCtx.state==='suspended')await _kokoroCtx.resume();const buffer=_kokoroCtx.createBuffer(1,audio.audio.length,audio.sampling_rate);buffer.copyToChannel(audio.audio,0);const source=_kokoroCtx.createBufferSource();source.buffer=buffer;source.playbackRate.value=rate;source.connect(_kokoroCtx.destination);_kokoroAudio=source;source.onended=()=>{_kokoroAudio=null;if(playing)doAdvance();};source.start();}catch(e){console.error('Kokoro:',e);const u=new SpeechSynthesisUtterance(text);u.rate=rate;u.pitch=pitch;u.volume=voiceVol;if(selVoice)u.voice=selVoice;u.onend=()=>{if(playing)doAdvance();};window.speechSynthesis.speak(u);}}
 
 function toggleVoiceGuide(){ document.getElementById('voice-guide').classList.toggle('show'); }
+
+// ═══════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════
+// INIT — all event listeners inside DOMContentLoaded
+// ═══════════════════════════════════════════
+// ── DOM element cache — avoid repeated getElementById in hot paths ──
+const EL = {};
+function cacheElements(){
+  EL.progFill    = document.getElementById('prog-fill');
+  EL.progPct     = document.getElementById('prog-pct');
+  EL.progChapter = document.getElementById('prog-chapter');
+  EL.readerContent = document.getElementById('reader-content');
+  EL.readerScroll  = document.getElementById('reader-scroll');
+  EL.scrollThumb   = document.getElementById('scrollbar-thumb');
+  EL.playIco  = document.getElementById('ico-play');
+  EL.pauseIco = document.getElementById('ico-pause');
+  EL.speedLbl = document.getElementById('speed-lbl');
+  EL.pitchLbl = document.getElementById('pitch-lbl');
+}
 
 async function init(){
   // Database + data
@@ -3337,11 +3020,9 @@ async function init(){
   books = await dbAll('books');
   books.sort((a,b) => b.addedAt - a.addedAt);
   renderLibrary();
+  const _lastOpenBook=sessionStorage.getItem('pl_open_book');
+  if(_lastOpenBook&&books.find(b=>b.id===_lastOpenBook)) openBook(_lastOpenBook);
   // Restore open book from before page refresh
-  const _lastOpenBook = sessionStorage.getItem('pl_open_book');
-  if(_lastOpenBook && books.find(b=>b.id===_lastOpenBook)){
-    openBook(_lastOpenBook);
-  }
   await loadAmbientSounds();
   restoreVolPrefs();
   loadYTApi();
@@ -3362,7 +3043,9 @@ async function init(){
 
   const uz = document.getElementById('upload-zone');
   if(uz){
-    uz.addEventListener('click', () => {
+    uz.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
       if(fileInput){ fileInput.value=''; fileInput.click(); }
     });
     uz.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); uz.classList.add('drag-over'); });
